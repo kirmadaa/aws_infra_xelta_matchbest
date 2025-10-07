@@ -1,11 +1,11 @@
 terraform {
   required_version = ">= 1.0"
   backend "s3" {
-    # Configure your S3 backend here
-    # bucket         = "your-terraform-state-bucket"
-    # key            = "xelta-prod-eu-west-3.tfstate"
-    # region         = "eu-west-3"
-    # dynamodb_table = "your-terraform-state-lock-table"
+     Configure your S3 backend here
+     bucket         = "xeltainfrastatefiles"
+     key            = "xelta-prod-eu-west-3.tfstate"
+     region         = "eu-west-3"
+     dynamodb_table = "xelta-terraform-locks"
   }
   required_providers {
     aws = {
