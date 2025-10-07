@@ -2,7 +2,7 @@
 // General Project Configuration
 // ------------------------------------------------------------------
 environment = "dev"
-aws_region  = "eu-central-1"
+aws_region  = "ap-south-1"
 
 // The main domain for this environment (e.g., "dev.xelta.com")
 domain_name = "xelta.ai"
@@ -12,7 +12,7 @@ domain_name = "xelta.ai"
 // ------------------------------------------------------------------
 // Networking Configuration
 // ------------------------------------------------------------------
-vpc_cidr = "10.1.0.0/16"
+vpc_cidr = "10.0.0.0/16"
 
 // ------------------------------------------------------------------
 // EKS Cluster Configuration
