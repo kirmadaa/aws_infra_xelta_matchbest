@@ -20,10 +20,10 @@ vpc_cidr = "10.0.0.0/16"
 // ------------------------------------------------------------------
 // EKS Cluster Configuration
 // ------------------------------------------------------------------
-eks_cluster_version = "1.28"
+eks_cluster_version = "1.32"
 eks_instance_types  = ["t3.medium"]
 eks_min_nodes       = 1
-eks_max_nodes       = 3
+eks_max_nodes       = 2
 
 // ------------------------------------------------------------------
 // Database & Cache Configuration
@@ -32,10 +32,9 @@ eks_max_nodes       = 3
 db_skip_final_snapshot = true
 
 // Aurora PostgreSQL config
-aurora_instance_class = "db.t3.medium"
+aurora_instance_class = "db.t3.small"
 
-// DocumentDB config
-docdb_instance_class = "db.t3.medium"
+
 
 // ElastiCache Redis config
 redis_node_type  = "cache.t3.small"
