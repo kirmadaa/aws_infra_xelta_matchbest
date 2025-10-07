@@ -1,0 +1,48 @@
+// ------------------------------------------------------------------
+// General Project Configuration
+// ------------------------------------------------------------------
+environment = "dev"
+aws_region  = "ap-south-1"
+
+// The main domain for this environment (e.g., "dev.xelta.com")
+domain_name = "dev.xelta.com"
+
+// The root domain hosted zone ID where the subdomain will be delegated.
+// Find this in the AWS Route 53 console for your root domain (e.g., "xelta.com").
+// Example: "Z0123456789ABCDEFGHIJKL"
+parent_zone_id = "YOUR_PARENT_ZONE_ID" // <-- REQUIRED: Get this from AWS Route53
+
+// ------------------------------------------------------------------
+// Networking Configuration
+// ------------------------------------------------------------------
+vpc_cidr = "10.0.0.0/16"
+
+// ------------------------------------------------------------------
+// EKS Cluster Configuration
+// ------------------------------------------------------------------
+eks_cluster_version = "1.28"
+eks_instance_types  = ["t3.medium"]
+eks_min_nodes       = 1
+eks_max_nodes       = 3
+
+// The name of an EC2 Key Pair to allow SSH access to the EKS nodes.
+// Create this in the EC2 console in the correct region.
+// Leave as "" to disable SSH access.
+ec2_key_name        = "your-ec2-key-name" // <-- OPTIONAL: Get this from AWS EC2 Key Pairs
+
+// ------------------------------------------------------------------
+// Database & Cache Configuration
+// ------------------------------------------------------------------
+// Set to `true` for dev/uat to allow deletion without snapshots.
+// Set to `false` for prod.
+db_skip_final_snapshot = true
+
+// Aurora PostgreSQL config
+aurora_instance_class = "db.t3.medium"
+
+// DocumentDB config
+docdb_instance_class = "db.t3.medium"
+
+// ElastiCache Redis config
+redis_node_type  = "cache.t3.small"
+redis_node_count = 1
