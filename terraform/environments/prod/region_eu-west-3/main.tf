@@ -77,7 +77,7 @@ module "database" {
   eks_node_security_group_id = module.eks.node_security_group_id
   db_skip_final_snapshot     = var.db_skip_final_snapshot
   aurora_instance_class      = var.aurora_instance_class
-  docdb_instance_class       = var.docdb_instance_class
+
   redis_node_type            = var.redis_node_type
   redis_node_count           = var.redis_node_count
 }
