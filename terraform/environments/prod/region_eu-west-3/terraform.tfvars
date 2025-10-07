@@ -20,10 +20,10 @@ vpc_cidr = "10.0.0.0/16"
 // ------------------------------------------------------------------
 // EKS Cluster Configuration
 // ------------------------------------------------------------------
-eks_cluster_version = "1.28"
+eks_cluster_version = "1.32"
 eks_instance_types  = ["t3.large"] // Larger instances for prod
-eks_min_nodes       = 2            // More nodes for HA
-eks_max_nodes       = 5
+eks_min_nodes       = 1            // More nodes for HA
+eks_max_nodes       = 2
 
 // ------------------------------------------------------------------
 // Database & Cache Configuration
