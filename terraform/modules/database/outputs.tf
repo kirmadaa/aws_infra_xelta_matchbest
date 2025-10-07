@@ -3,10 +3,6 @@ output "aurora_cluster_endpoint" {
   value       = aws_rds_cluster.aurora.endpoint
 }
 
-output "docdb_cluster_endpoint" {
-  description = "The endpoint for the DocumentDB cluster."
-  value       = aws_docdb_cluster.docdb.endpoint
-}
 
 output "redis_primary_endpoint" {
   description = "The primary endpoint for the ElastiCache Redis replication group."

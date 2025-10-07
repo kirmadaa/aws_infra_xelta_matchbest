@@ -1,14 +1,25 @@
 output "waf_arn" {
-  description = "The ARN of the WAF Web ACL."
+  description = "The ARN of the WAF Web ACL to be used in the Kubernetes Ingress manifest."
   value       = aws_wafv2_web_acl.main.arn
 }
 
-output "cloudfront_domain_name" {
-  description = "The domain name of the CloudFront distribution."
-  value       = aws_cloudfront_distribution.main.domain_name
+output "certificate_arn" {
+  description = "The ARN of the ACM certificate to be used by the ALB."
+  value       = aws_acm_certificate.main.arn
 }
 
-output "subdomain_zone_id" {
-  description = "The ID of the created Route 53 subdomain zone."
-  value       = aws_route53_zone.subdomain.zone_id
+# These outputs are for the manual DNS validation step
+output "acm_certificate_validation_cname_name" {
+  description = "The CNAME record name required for ACM certificate validation."
+  value       = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_name
+}
+
+output "acm_certificate_validation_cname_value" {
+  description = "The CNAME record value required for ACM certificate validation."
+  value       = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_value
+}
+
+output "acm_certificate_validation_cname_type" {
+  description = "The record type required for ACM certificate validation."
+  value       = tolist(aws_acm_certificate.main.domain_validation_options)[0].resource_record_type
 }

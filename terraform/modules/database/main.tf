@@ -86,9 +86,9 @@ resource "aws_rds_cluster" "aurora" {
   cluster_identifier      = "${var.project_name}-aurora"
   engine                  = "aurora-postgresql"
   engine_mode             = "provisioned"
-  engine_version          = "14.7"
-  database_name           = "appdb"
-  master_username         = "masteruser"
+  engine_version          = "14.7" // need to be discused  
+  database_name           = "appdb" // need to be discused 
+  master_username         = "masteruser" // need to be discused 
   master_password         = random_password.db_master_password.result
   db_subnet_group_name    = aws_db_subnet_group.default.name
   vpc_security_group_ids  = [aws_security_group.aurora.id]

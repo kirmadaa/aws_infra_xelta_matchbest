@@ -4,12 +4,7 @@ variable "project_name" {
 }
 
 variable "domain_name" {
-  description = "The main domain for the environment (e.g., 'dev.myapp.com')."
-  type        = string
-}
-
-variable "parent_zone_id" {
-  description = "The Route 53 hosted zone ID for the parent domain."
+  description = "The full domain name for which the certificate will be issued (e.g., 'www.xelta.ai')."
   type        = string
 }
 

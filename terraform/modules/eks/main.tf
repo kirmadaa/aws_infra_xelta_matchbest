@@ -82,9 +82,9 @@ resource "aws_eks_node_group" "main" {
     max_size     = var.eks_max_nodes
   }
 
-  remote_access {
-    ec2_ssh_key = "" # Add your key name here if you need SSH access
-  }
+ # // remote_access {
+ # //   ec2_ssh_key = "" # Add your key name here if you need SSH access
+ # // }
 
   tags = {
     "k8s.io/cluster-autoscaler/${var.project_name}" = "owned"

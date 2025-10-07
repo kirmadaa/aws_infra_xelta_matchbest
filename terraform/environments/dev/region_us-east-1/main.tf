@@ -3,8 +3,8 @@ terraform {
   backend "s3" {
      Configure your S3 backend here
      bucket         = "xeltainfrastatefiles"
-     key            = "xelta-dev-eu-west-3.tfstate"
-     region         = "eu-west-3"
+     key            = "xelta-dev-us-east-1.tfstate"
+     region         = "us-east-1"
      dynamodb_table = "xelta-terraform-locks"
   }
   required_providers {
