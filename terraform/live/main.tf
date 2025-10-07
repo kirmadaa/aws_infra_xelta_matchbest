@@ -1,11 +1,11 @@
 terraform {
   required_version = ">= 1.0"
   backend "s3" {
-     Configure your S3 backend here
-     bucket         = "xeltainfrastatefiles"
-     key            = "xelta-dev-eu-west-3.tfstate"
-     region         = "eu-west-3"
-     dynamodb_table = "xelta-terraform-locks"
+    # Replace with your actual backend configuration
+    # bucket         = "your-terraform-state-bucket"
+    # key            = "xelta/terraform.tfstate"
+    # region         = "eu-west-3"
+    # dynamodb_table = "your-terraform-lock-table"
   }
   required_providers {
     aws = {
@@ -28,7 +28,7 @@ locals {
 }
 
 module "vpc" {
-  source       = "../../../modules/vpc"
+  source       = "../modules/vpc"
   project_name = local.project_name
   aws_region   = var.aws_region
   vpc_cidr     = var.vpc_cidr
@@ -57,7 +57,7 @@ resource "aws_security_group" "alb" {
 }
 
 module "eks" {
-  source               = "../../../modules/eks"
+  source               = "../modules/eks"
   project_name         = local.project_name
   aws_region           = var.aws_region
   vpc_id               = module.vpc.vpc_id
@@ -69,7 +69,7 @@ module "eks" {
 }
 
 module "database" {
-  source                     = "../../../modules/database"
+  source                     = "../modules/database"
   project_name               = local.project_name
   environment                = var.environment
   vpc_id                     = module.vpc.vpc_id
@@ -83,7 +83,7 @@ module "database" {
 }
 
 module "edge" {
-  source                = "../../../modules/edge"
+  source                = "../modules/edge"
   project_name          = local.project_name
   domain_name           = var.domain_name
   parent_zone_id        = var.parent_zone_id

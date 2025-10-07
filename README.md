@@ -1,14 +1,14 @@
 # Xelta Infrastructure
 
-This repository contains the Terraform code to provision a secure, scalable, and production-ready infrastructure on AWS for the Xelta project. The infrastructure is designed with a security-first mindset, where all components are private by default and access is strictly controlled.
+This repository contains the Terraform code to provision a secure, scalable, and production-ready infrastructure on AWS for the Xelta project. The infrastructure is defined from a single set of Terraform files and uses **Terraform Workspaces** to manage multiple environments (`dev`, `prod`, etc.).
 
 ## Project Philosophy
 
+*   **DRY (Don't Repeat Yourself):** A single, unified Terraform configuration is used for all environments, with environment-specific settings managed through `.tfvars` files.
 *   **Zero-Trust Networking:** No component trusts another by default. Access is granted via explicit security group rules.
 *   **Private by Default:** All EKS nodes, databases, and cache clusters reside in private subnets with no direct internet access.
 *   **ALB as the Secure Gateway:** The Application Load Balancer (ALB) is the primary entry point for traffic, protected by AWS WAF and CloudFront.
-*   **Infrastructure as Code:** The entire infrastructure is defined using Terraform, enabling consistent and repeatable deployments.
-*   **Automation-Ready:** The project includes a GitHub Actions workflow for automated CI/CD.
+*   **Automation-Ready:** The project includes a GitHub Actions workflow for automated, workspace-aware CI/CD.
 
 ## Prerequisites
 
@@ -16,33 +16,32 @@ Before you begin, ensure you have the following:
 
 1.  **AWS Account:** An active AWS account with the necessary permissions to create the resources defined in this project.
 2.  **Registered Domain:** A domain name registered in AWS Route 53. You will need the **Hosted Zone ID** of this parent domain.
-3.  **Terraform CLI:** Terraform installed on your local machine.
+3.  **Terraform CLI (v1.0+):** Terraform installed on your local machine.
 4.  **AWS CLI:** The AWS CLI installed and configured with credentials for your AWS account.
 5.  **Helm:** The Helm CLI installed for deploying Kubernetes packages.
 
 ## Project Structure
 
-The project is organized into two main directories:
-
 *   `terraform/modules`: Contains reusable Terraform modules for different parts of the infrastructure (VPC, EKS, Database, Edge).
-*   `terraform/environments`: Contains the root configurations for each environment (`dev`, `prod`). Each environment is configured for a specific AWS region.
-*   `kubernetes-examples`: Contains example Kubernetes manifests, such as the `secure-ingress.yaml` file.
+*   `terraform/live`: The root directory for the live infrastructure configuration. All `terraform` commands are run from here.
+*   `terraform/live/env_vars`: Contains the environment-specific variable files (`dev.tfvars`, `prod.tfvars`).
+*   `kubernetes-examples`: Contains example Kubernetes manifests.
 
 ## Configuration
 
 ### 1. Set Up the Terraform Backend
 
-The Terraform state is stored remotely in an S3 bucket for security and collaboration. You need to create an S3 bucket and a DynamoDB table (for state locking) in your AWS account.
+The Terraform state is stored remotely in an S3 bucket. You need to create an S3 bucket and a DynamoDB table (for state locking) in your AWS account.
 
-Once created, update the `backend "s3"` block in `terraform/environments/<env>/region_*/main.tf` for both the `dev` and `prod` environments with your bucket name, desired key, and DynamoDB table name.
+Once created, update the `backend "s3"` block in `terraform/live/main.tf` with your bucket name, a base key, and your DynamoDB table name. Terraform will automatically manage state files for each workspace under the specified key.
 
 ```terraform
-# terraform/environments/dev/region_eu-west-3/main.tf
+# terraform/live/main.tf
 
 terraform {
   backend "s3" {
     bucket         = "your-terraform-state-bucket"
-    key            = "xelta-dev-eu-west-3.tfstate"
+    key            = "xelta/terraform.tfstate" # Base key for all workspaces
     region         = "eu-west-3"
     dynamodb_table = "your-terraform-lock-table"
   }
@@ -52,26 +51,19 @@ terraform {
 
 ### 2. Configure Environment Variables
 
-For each environment you want to deploy (`dev`, `prod`), navigate to its directory (e.g., `terraform/environments/dev/region_eu-west-3/`) and create a `terraform.tfvars` file by copying the example:
+The environment-specific variables are defined in `terraform/live/env_vars/`. You need to edit `dev.tfvars` and `prod.tfvars` and provide a value for `parent_zone_id`.
 
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Now, edit `terraform.tfvars` and fill in the required values:
-
-*   `domain_name`: The full domain name for the environment (e.g., `dev.xelta.com`).
 *   `parent_zone_id`: The **Hosted Zone ID** of your root domain in Route 53 (e.g., the zone ID for `xelta.com`).
 
-All other variables are pre-configured with sensible defaults for their respective environments, but you can adjust them as needed.
+You can also adjust any other variables in these files as needed for each environment.
 
-## Manual Deployment
+## Manual Deployment with Workspaces
 
-To deploy the infrastructure manually, follow these steps:
+All commands should be run from the `terraform/live` directory.
 
-1.  **Navigate to the Environment Directory:**
+1.  **Navigate to the Live Directory:**
     ```bash
-    cd terraform/environments/dev/region_eu-west-3
+    cd terraform/live
     ```
 
 2.  **Initialize Terraform:**
@@ -80,21 +72,41 @@ To deploy the infrastructure manually, follow these steps:
     terraform init
     ```
 
-3.  **Plan the Deployment:**
-    Review the changes that Terraform will make.
+3.  **Create and Select a Workspace:**
+    Terraform uses workspaces to manage different environments. Create a workspace for `dev` and/or `prod`.
     ```bash
-    terraform plan -var-file=terraform.tfvars
+    # Create the dev workspace (only needs to be done once)
+    terraform workspace new dev
+
+    # Select the dev workspace
+    terraform workspace select dev
     ```
 
-4.  **Apply the Changes:**
-    Provision the infrastructure.
+4.  **Plan the Deployment:**
+    Review the changes that Terraform will make for the selected workspace. You must specify the corresponding `.tfvars` file.
     ```bash
-    terraform apply -var-file=terraform.tfvars --auto-approve
+    # For the dev workspace
+    terraform plan -var-file="env_vars/dev.tfvars"
     ```
+
+5.  **Apply the Changes:**
+    Provision the infrastructure for the selected workspace.
+    ```bash
+    # For the dev workspace
+    terraform apply -var-file="env_vars/dev.tfvars" --auto-approve
+    ```
+
+To deploy the `prod` environment, simply select the `prod` workspace and use `prod.tfvars`:
+```bash
+terraform workspace new prod
+terraform workspace select prod
+terraform plan -var-file="env_vars/prod.tfvars"
+terraform apply -var-file="env_vars/prod.tfvars" --auto-approve
+```
 
 ## Post-Deployment Steps
 
-After the infrastructure is deployed, you need to configure `kubectl` and install the AWS Load Balancer Controller on the EKS cluster.
+After the infrastructure is deployed, you need to configure `kubectl` and install the AWS Load Balancer Controller.
 
 1.  **Configure `kubectl`:**
     Run the following command, replacing `<your-region>` and `<your-env>` with your environment's details (e.g., `eu-west-3`, `dev`).
@@ -103,7 +115,6 @@ After the infrastructure is deployed, you need to configure `kubectl` and instal
     ```
 
 2.  **Install AWS Load Balancer Controller:**
-    The IAM role for the controller has already been created by Terraform. Now, install the controller using Helm.
     ```bash
     helm repo add eks https://aws.github.io/eks-charts
     helm repo update
@@ -115,20 +126,18 @@ After the infrastructure is deployed, you need to configure `kubectl` and instal
     ```
 
 3.  **Deploy Your Application:**
-    You can now deploy your application to the EKS cluster. Use the `kubernetes-examples/secure-ingress.yaml` file as a template for exposing your services through the ALB.
-
-    You will need to replace the placeholders in the Ingress manifest with the outputs from Terraform:
+    Use the `kubernetes-examples/secure-ingress.yaml` manifest as a template. You will need to replace the placeholders with the outputs from Terraform for the currently selected workspace:
     *   `alb.ingress.kubernetes.io/wafv2-acl-arn`: Get this value by running `terraform output waf_arn`.
     *   `alb.ingress.kubernetes.io/security-groups`: Get this value by running `terraform output alb_security_group_id`.
 
 ## GitHub Actions Deployment
 
-This repository includes a GitHub Actions workflow in `.github/workflows/deploy.yml` for automated deployments.
+The GitHub Actions workflow in `.github/workflows/deploy.yml` uses Terraform workspaces to deploy automatically.
 
 ### Prerequisites for GitHub Actions
 
-1.  **AWS OIDC Provider:** You must have an IAM OIDC provider configured in your AWS account to allow GitHub Actions to securely authenticate.
-2.  **IAM Roles:** Create IAM roles that the GitHub Actions workflow can assume. These roles need permissions to deploy the Terraform resources.
+1.  **AWS OIDC Provider:** You must have an IAM OIDC provider configured in your AWS account.
+2.  **IAM Roles:** Create IAM roles that the GitHub Actions workflow can assume.
 3.  **Repository Secrets:** Configure the following secrets in your GitHub repository settings:
     *   `AWS_ROLE_DEV`: The ARN of the IAM role for deploying the `dev` environment.
     *   `AWS_ROLE_PROD`: The ARN of the IAM role for deploying the `prod` environment.

@@ -104,7 +104,23 @@ resource "aws_rds_cluster_instance" "aurora" {
   engine_version     = aws_rds_cluster.aurora.engine_version
 }
 
+# --- DocumentDB ---
+resource "aws_docdb_cluster" "docdb" {
+  cluster_identifier      = "${var.project_name}-docdb"
+  engine                  = "docdb"
+  master_username         = "masteruser"
+  master_password         = random_password.db_master_password.result
+  db_subnet_group_name    = aws_db_subnet_group.default.name
+  vpc_security_group_ids  = [aws_security_group.docdb.id]
+  skip_final_snapshot     = var.db_skip_final_snapshot
+  storage_encrypted       = true
+}
 
+resource "aws_docdb_cluster_instance" "docdb" {
+  count              = var.environment == "prod" ? 2 : 1 # Multi-AZ for Prod
+  cluster_identifier = aws_docdb_cluster.docdb.id
+  instance_class     = var.docdb_instance_class
+}
 
 # --- ElastiCache (Redis) ---
 resource "aws_elasticache_subnet_group" "redis" {

@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy'
+        description: 'Choose the environment to deploy'
         required: true
         default: 'prod'
         type: choice
@@ -24,6 +24,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    defaults:
+      run:
+        working-directory: ./terraform/live
 
     steps:
       - name: Checkout Repository
@@ -41,19 +44,16 @@ jobs:
           terraform_version: 1.13.3
 
       - name: Terraform Init
-        id: init
         run: terraform init
-        working-directory: ./terraform/environments/dev/region_eu-west-3
+
+      - name: Select Dev Workspace
+        run: terraform workspace select dev || terraform workspace new dev
 
       - name: Terraform Plan
-        id: plan
-        run: terraform plan -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/dev/region_eu-west-3
+        run: terraform plan -no-color -var-file="env_vars/dev.tfvars"
 
       - name: Terraform Apply
-        id: apply
-        run: terraform apply -auto-approve -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/dev/region_eu-west-3
+        run: terraform apply -auto-approve -no-color -var-file="env_vars/dev.tfvars"
 
   deploy-prod:
     name: 'Deploy Prod Environment'
@@ -62,6 +62,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    defaults:
+      run:
+        working-directory: ./terraform/live
 
     steps:
       - name: Checkout Repository
@@ -79,16 +82,13 @@ jobs:
           terraform_version: 1.13.3
 
       - name: Terraform Init
-        id: init
         run: terraform init
-        working-directory: ./terraform/environments/prod/region_eu-west-3
+
+      - name: Select Prod Workspace
+        run: terraform workspace select prod || terraform workspace new prod
 
       - name: Terraform Plan
-        id: plan
-        run: terraform plan -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/prod/region_eu-west-3
+        run: terraform plan -no-color -var-file="env_vars/prod.tfvars"
 
       - name: Terraform Apply
-        id: apply
-        run: terraform apply -auto-approve -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/prod/region_eu-west-3
+        run: terraform apply -auto-approve -no-color -var-file="env_vars/prod.tfvars"
