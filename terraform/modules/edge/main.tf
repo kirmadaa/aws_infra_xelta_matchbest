@@ -1,6 +1,9 @@
 # --- Route 53 DNS Zone ---
 resource "aws_route53_zone" "subdomain" {
   name = var.domain_name
+  tags = {
+    Name = "${var.project_name}-zone"
+  }
 }
 
 # Automatically delegate the subdomain from the parent domain
@@ -76,16 +79,16 @@ resource "aws_wafv2_web_acl" "main" {
       }
     }
     visibility_config {
-      cloudwatch_metrics_enabled = false
+      cloudwatch_metrics_enabled = true
       metric_name                = "aws-managed-rules"
-      sampled_requests_enabled   = false
+      sampled_requests_enabled   = true
     }
   }
 
   visibility_config {
-    cloudwatch_metrics_enabled = false
+    cloudwatch_metrics_enabled = true
     metric_name                = "${var.project_name}-waf-metrics"
-    sampled_requests_enabled   = false
+    sampled_requests_enabled   = true
   }
 }
 
@@ -100,6 +103,10 @@ resource "aws_cloudfront_distribution" "main" {
       https_port               = 443
       origin_protocol_policy   = "http-only"
       origin_ssl_protocols     = ["TLSv1.2"]
+    }
+    custom_header {
+      name  = "X-Custom-Header"
+      value = "a-secure-value-to-be-replaced" # Replace with a secure value, e.g., from a secret manager
     }
   }
 
@@ -141,6 +148,17 @@ resource "aws_cloudfront_distribution" "main" {
 resource "aws_route53_record" "www" {
   zone_id = aws_route53_zone.subdomain.zone_id
   name    = var.domain_name
+  type    = "A"
+  alias {
+    name                   = aws_cloudfront_distribution.main.domain_name
+    zone_id                = aws_cloudfront_distribution.main.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "wildcard" {
+  zone_id = aws_route53_zone.subdomain.zone_id
+  name    = "*.${var.domain_name}"
   type    = "A"
   alias {
     name                   = aws_cloudfront_distribution.main.domain_name

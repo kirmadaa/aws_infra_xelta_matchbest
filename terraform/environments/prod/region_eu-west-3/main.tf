@@ -3,15 +3,18 @@ terraform {
   backend "s3" {
     # Configure your S3 backend here
     # bucket         = "your-terraform-state-bucket"
-    # key            = "xelta/dev/ap-south-1/terraform.tfstate"
-    # region         = "ap-south-1"
-    # encrypt        = true
-    # dynamodb_table = "terraform-lock-table"
+    # key            = "xelta-prod-eu-west-3.tfstate"
+    # region         = "eu-west-3"
+    # dynamodb_table = "your-terraform-state-lock-table"
   }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
@@ -25,7 +28,7 @@ locals {
 }
 
 module "vpc" {
-  source       = "../../../../modules/vpc"
+  source       = "../../../modules/vpc"
   project_name = local.project_name
   aws_region   = var.aws_region
   vpc_cidr     = var.vpc_cidr
@@ -54,7 +57,7 @@ resource "aws_security_group" "alb" {
 }
 
 module "eks" {
-  source               = "../../../../modules/eks"
+  source               = "../../../modules/eks"
   project_name         = local.project_name
   aws_region           = var.aws_region
   vpc_id               = module.vpc.vpc_id
@@ -63,12 +66,12 @@ module "eks" {
   eks_instance_types   = var.eks_instance_types
   eks_min_nodes        = var.eks_min_nodes
   eks_max_nodes        = var.eks_max_nodes
-  ec2_key_name         = var.ec2_key_name
 }
 
 module "database" {
-  source                     = "../../../../modules/database"
+  source                     = "../../../modules/database"
   project_name               = local.project_name
+  environment                = var.environment
   vpc_id                     = module.vpc.vpc_id
   database_subnet_ids        = module.vpc.database_subnet_ids
   eks_node_security_group_id = module.eks.node_security_group_id
@@ -80,19 +83,9 @@ module "database" {
 }
 
 module "edge" {
-  source                = "../../../../modules/edge"
+  source                = "../../../modules/edge"
   project_name          = local.project_name
   domain_name           = var.domain_name
   parent_zone_id        = var.parent_zone_id
   alb_security_group_id = aws_security_group.alb.id
-}
-
-output "alb_security_group_id" {
-  description = "The ID of the security group for the ALB. Use this in the secure-ingress.yaml."
-  value       = aws_security_group.alb.id
-}
-
-output "waf_arn" {
-  description = "The ARN of the WAF Web ACL. Use this in the secure-ingress.yaml."
-  value       = module.edge.waf_arn
 }

@@ -69,27 +69,6 @@ resource "aws_iam_role_policy_attachment" "nodes_ecr_policy" {
   role       = aws_iam_role.nodes.name
 }
 
-resource "aws_security_group" "nodes" {
-  name   = "${var.project_name}-node-sg"
-  vpc_id = var.vpc_id
-
-  ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    self      = true
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "${var.project_name}-node-sg" }
-}
-
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.project_name}-ng"
@@ -104,10 +83,8 @@ resource "aws_eks_node_group" "main" {
   }
 
   remote_access {
-    ec2_ssh_key = var.ec2_key_name
+    ec2_ssh_key = "" # Add your key name here if you need SSH access
   }
-
-  vpc_security_group_ids = [aws_security_group.nodes.id]
 
   tags = {
     "k8s.io/cluster-autoscaler/${var.project_name}" = "owned"

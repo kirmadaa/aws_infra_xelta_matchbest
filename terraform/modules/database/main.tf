@@ -6,6 +6,9 @@ data "aws_availability_zones" "available" {
 resource "aws_db_subnet_group" "default" {
   name       = "${var.project_name}-dbs"
   subnet_ids = var.database_subnet_ids
+  tags = {
+    Name = "${var.project_name}-db-subnet-group"
+  }
 }
 
 # --- Security Groups ---
@@ -18,6 +21,7 @@ resource "aws_security_group" "aurora" {
     to_port         = 5432
     security_groups = [var.eks_node_security_group_id]
   }
+  tags = { Name = "${var.project_name}-aurora-sg" }
 }
 
 resource "aws_security_group" "docdb" {
@@ -29,6 +33,7 @@ resource "aws_security_group" "docdb" {
     to_port         = 27017
     security_groups = [var.eks_node_security_group_id]
   }
+  tags = { Name = "${var.project_name}-docdb-sg" }
 }
 
 resource "aws_security_group" "redis" {
@@ -40,17 +45,19 @@ resource "aws_security_group" "redis" {
     to_port         = 6379
     security_groups = [var.eks_node_security_group_id]
   }
+  tags = { Name = "${var.project_name}-redis-sg" }
 }
 
 # --- Password Management ---
 resource "random_password" "db_master_password" {
-  length  = 16
-  special = true
+  length           = 16
+  special          = true
+  override_special = "!#$%&()*+,-./:;<=>?@[]^_`{|}~"
 }
 
 resource "aws_secretsmanager_secret" "db_password" {
-  name = "${var.project_name}/db/masterpassword"
-  recovery_window_in_days = 0 # Set to 30 for prod
+  name                    = "${var.project_name}/db/masterpassword"
+  recovery_window_in_days = var.environment == "prod" ? 30 : 0
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
@@ -70,10 +77,11 @@ resource "aws_rds_cluster" "aurora" {
   db_subnet_group_name    = aws_db_subnet_group.default.name
   vpc_security_group_ids  = [aws_security_group.aurora.id]
   skip_final_snapshot     = var.db_skip_final_snapshot
+  storage_encrypted       = true
 }
 
 resource "aws_rds_cluster_instance" "aurora" {
-  count              = 2 # Multi-AZ
+  count              = var.environment == "prod" ? 2 : 1 # Multi-AZ for Prod
   cluster_identifier = aws_rds_cluster.aurora.id
   instance_class     = var.aurora_instance_class
   engine             = aws_rds_cluster.aurora.engine
@@ -89,10 +97,11 @@ resource "aws_docdb_cluster" "docdb" {
   db_subnet_group_name    = aws_db_subnet_group.default.name
   vpc_security_group_ids  = [aws_security_group.docdb.id]
   skip_final_snapshot     = var.db_skip_final_snapshot
+  storage_encrypted       = true
 }
 
 resource "aws_docdb_cluster_instance" "docdb" {
-  count              = 2 # Multi-AZ
+  count              = var.environment == "prod" ? 2 : 1 # Multi-AZ for Prod
   cluster_identifier = aws_docdb_cluster.docdb.id
   instance_class     = var.docdb_instance_class
 }
@@ -103,12 +112,17 @@ resource "aws_elasticache_subnet_group" "redis" {
   subnet_ids = var.database_subnet_ids
 }
 
-resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "${var.project_name}-redis"
-  engine               = "redis"
-  node_type            = var.redis_node_type
-  num_cache_nodes      = var.redis_node_count
-  port                 = 6379
-  subnet_group_name    = aws_elasticache_subnet_group.redis.name
-  security_group_ids   = [aws_security_group.redis.id]
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id       = "${var.project_name}-redis"
+  description                = "Redis replication group for ${var.project_name}"
+  node_type                  = var.redis_node_type
+  num_cache_clusters         = var.redis_node_count
+  port                       = 6379
+  subnet_group_name          = aws_elasticache_subnet_group.redis.name
+  security_group_ids         = [aws_security_group.redis.id]
+  automatic_failover_enabled = var.redis_node_count > 1
+
+  # Production readiness: enable at-rest and in-transit encryption
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
 }
