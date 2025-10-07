@@ -33,10 +33,6 @@ variable "aurora_instance_class" {
   type        = string
 }
 
-variable "docdb_instance_class" {
-  description = "The instance class for the DocumentDB cluster."
-  type        = string
-}
 
 variable "redis_node_type" {
   description = "The node type for the ElastiCache Redis cluster."
