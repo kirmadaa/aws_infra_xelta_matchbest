@@ -1,0 +1,94 @@
+name: Deploy Terraform Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+
+jobs:
+  deploy-dev:
+    name: 'Deploy Dev Environment'
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_DEV }}
+          aws-region: eu-west-3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./terraform/environments/dev/region_eu-west-3
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -var-file=terraform.tfvars
+        working-directory: ./terraform/environments/dev/region_eu-west-3
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve -no-color -var-file=terraform.tfvars
+        working-directory: ./terraform/environments/dev/region_eu-west-3
+
+  deploy-prod:
+    name: 'Deploy Prod Environment'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_PROD }}
+          aws-region: eu-west-3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.13.3
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./terraform/environments/prod/region_eu-west-3
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -var-file=terraform.tfvars
+        working-directory: ./terraform/environments/prod/region_eu-west-3
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve -no-color -var-file=terraform.tfvars
+        working-directory: ./terraform/environments/prod/region_eu-west-3
