@@ -34,8 +34,6 @@ db_skip_final_snapshot = false
 // Aurora PostgreSQL config
 aurora_instance_class = "db.r5.large" // Production-grade instance
 
-// DocumentDB config
-docdb_instance_class = "db.r5.large" // Production-grade instance
 
 // ElastiCache Redis config
 redis_node_type  = "cache.m5.large" // Production-grade node
