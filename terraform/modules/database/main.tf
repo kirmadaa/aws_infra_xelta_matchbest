@@ -65,6 +65,22 @@ resource "aws_secretsmanager_secret_version" "db_password" {
   secret_string = random_password.db_master_password.result
 }
 
+# --- Redis Auth Token ---
+resource "random_password" "redis_auth_token" {
+  length  = 32
+  special = false # Redis auth tokens are typically alphanumeric
+}
+
+resource "aws_secretsmanager_secret" "redis_auth_token" {
+  name                    = "${var.project_name}/redis/authtoken"
+  recovery_window_in_days = var.environment == "prod" ? 30 : 0
+}
+
+resource "aws_secretsmanager_secret_version" "redis_auth_token" {
+  secret_id     = aws_secretsmanager_secret.redis_auth_token.id
+  secret_string = random_password.redis_auth_token.result
+}
+
 # --- Aurora (PostgreSQL) ---
 resource "aws_rds_cluster" "aurora" {
   cluster_identifier      = "${var.project_name}-aurora"
@@ -125,4 +141,5 @@ resource "aws_elasticache_replication_group" "redis" {
   # Production readiness: enable at-rest and in-transit encryption
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
+  auth_token                 = random_password.redis_auth_token.result
 }
