@@ -5,12 +5,9 @@ environment = "prod"
 aws_region  = "eu-west-3"
 
 // The main domain for this environment (e.g., "prod.xelta.com")
-domain_name = "prod.xelta.com"
+domain_name = "xelta.ai
 
-// The root domain hosted zone ID where the subdomain will be delegated.
-// Find this in the AWS Route 53 console for your root domain (e.g., "xelta.com").
-// Example: "Z0123456789ABCDEFGHIJKL"
-parent_zone_id = "YOUR_PARENT_ZONE_ID"
+
 
 // ------------------------------------------------------------------
 // Networking Configuration
