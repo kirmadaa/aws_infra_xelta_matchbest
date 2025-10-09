@@ -1,0 +1,167 @@
+# Example Kubernetes ingress configuration for xelta.ai application
+# This demonstrates how to expose services via AWS ALB using the Load Balancer Controller
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xelta-app
+  labels:
+    name: xelta-app
+    environment: dev
+
+---
+# Service Account with IRSA for accessing Secrets Manager
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: xelta-app
+  namespace: xelta-app
+  annotations:
+    # Replace ACCOUNT_ID and REGION with actual values from Terraform outputs
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/xelta-dev-app-irsa-REGION
+
+---
+# Example application deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xelta-frontend
+  namespace: xelta-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: xelta-frontend
+  template:
+    metadata:
+      labels:
+        app: xelta-frontend
+    spec:
+      serviceAccountName: xelta-app
+      containers:
+        - name: frontend
+          image: xelta/frontend:latest
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            # Environment variables - secrets should be injected via CSI driver or external-secrets
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-connection
+                  key: host
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: redis-connection
+                  key: host
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+---
+# Service for frontend
+apiVersion: v1
+kind: Service
+metadata:
+  name: xelta-frontend
+  namespace: xelta-app
+spec:
+  type: ClusterIP
+  selector:
+    app: xelta-frontend
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
+      name: http
+
+---
+# Ingress with AWS ALB annotations
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: xelta-ingress
+  namespace: xelta-app
+  annotations:
+    # AWS Load Balancer Controller annotations
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
+
+    # SSL/TLS configuration
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT_ID:certificate/CERT_ID
+
+    # Security
+    alb.ingress.kubernetes.io/security-groups: sg-xxxxxxxx
+    alb.ingress.kubernetes.io/target-node-labels: "workload=app"
+
+    # Performance
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+
+    # Tags
+    alb.ingress.kubernetes.io/tags: Environment=dev,Project=xelta,ManagedBy=kubernetes
+spec:
+  rules:
+    - host: xelta.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: xelta-frontend
+                port:
+                  number: 80
+
+---
+# Secret for database connection (populate from Secrets Manager using External Secrets Operator)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-connection
+  namespace: xelta-app
+type: Opaque
+stringData:
+  host: "REPLACE_WITH_AURORA_ENDPOINT"
+  port: "5432"
+  database: "xelta"
+  # Username and password should be injected from AWS Secrets Manager via CSI driver
+
+---
+# Secret for Redis connection
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redis-connection
+  namespace: xelta-app
+type: Opaque
+stringData:
+  host: "REPLACE_WITH_REDIS_ENDPOINT"
+  port: "6379"
