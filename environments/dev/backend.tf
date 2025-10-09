@@ -5,8 +5,5 @@ terraform {
     region         = "eu-west-3"
     encrypt        = true
     dynamodb_table = "xelta-terraform-locks"
-    
-    # Enable state locking
-    kms_key_id = "alias/terraform-state-key"
   }
 }
