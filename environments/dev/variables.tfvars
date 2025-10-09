@@ -15,10 +15,10 @@ eks_version             = "1.28"
 eks_node_instance_types = ["t3.medium"]
 eks_node_desired_size   = 2
 eks_node_min_size       = 2
-eks_node_max_size       = 4
+eks_node_max_size       = 2
 
 # Aurora Configuration (minimal for dev)
-aurora_instance_class = "db.t3.medium"
+aurora_instance_class = "db.t3.small"
 aurora_instance_count = 2 # 1 writer + 1 reader
 enable_aurora         = true
 
