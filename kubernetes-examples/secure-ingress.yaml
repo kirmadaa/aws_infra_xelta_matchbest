@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: xelta-ingress
+  namespace: ingress # Change to your app's namespace
+  annotations:
+    # --- CRITICAL FOR SECURITY & AUTOMATION ---
+    # Tell the ALB controller which WAF to attach
+    # Replace the ARN with the output from `terraform output waf_arn`
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:eu-west-3:123456789012:regional/webacl/xelta-dev-waf/..."
+
+    # Use the security group created by Terraform
+    # Replace the SG ID with the output from `terraform output alb_security_group_id`
+    alb.ingress.kubernetes.io/security-groups: "sg-0123456789abcdef0"
+
+    # --- Standard ALB Configuration ---
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+
+    # --- Health Check Configuration ---
+    # alb.ingress.kubernetes.io/healthcheck-path: /health
+    # alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    # alb.ingress.kubernetes.io/success-codes: '200'
+
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service # Your app's Kubernetes service
+            port:
+              number: 80
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service # Your backend k8s service
+            port:
+              number: 8080
