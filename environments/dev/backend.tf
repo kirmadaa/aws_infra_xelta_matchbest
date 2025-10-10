@@ -1,8 +1,8 @@
 terraform {
   backend "s3" {
-    bucket         = "xeltainfrastatefiles"
+    bucket         = "xeltainfrastate"
     key            = "xelta-dev/terraform.tfstate"
-    region         = "eu-west-3"
+    region         = "ap-south-1"
     encrypt        = true
     dynamodb_table = "xelta-terraform-locks"
   }

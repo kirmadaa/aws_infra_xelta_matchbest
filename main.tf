@@ -86,7 +86,7 @@ module "redis_us_east_1" {
 
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-  kms_key_id      = module.kms.kms_key_id
+  kms_key_id      = module.kms.kms_key_arn
 
   allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
 }
@@ -103,7 +103,7 @@ module "aurora_us_east_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  kms_key_id     = module.kms.kms_key_id
+  kms_key_id     = module.kms.kms_key_arn
   db_secret_arn  = module.secrets.db_secret_arn
 
   allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
@@ -177,7 +177,7 @@ module "redis_eu_central_1" {
 
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-  kms_key_id      = module.kms.kms_key_id
+  kms_key_id      = module.kms.kms_key_arn
 
   allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
 }
@@ -194,7 +194,7 @@ module "aurora_eu_central_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  kms_key_id     = module.kms.kms_key_id
+  kms_key_id     = module.kms.kms_key_arn
   db_secret_arn  = module.secrets.db_secret_arn
 
   allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
@@ -268,7 +268,7 @@ module "redis_ap_south_1" {
 
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-  kms_key_id      = module.kms.kms_key_id
+  kms_key_id      = module.kms.kms_key_arn
 
   allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]
 }
@@ -285,7 +285,7 @@ module "aurora_ap_south_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  kms_key_id     = module.kms.kms_key_id
+  kms_key_id     = module.kms.kms_key_arn
   db_secret_arn  = module.secrets.db_secret_arn
 
   allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]

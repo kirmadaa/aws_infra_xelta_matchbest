@@ -56,8 +56,9 @@ resource "aws_elasticache_parameter_group" "main" {
 # ElastiCache Replication Group (Redis)
 # Using cluster mode disabled for simplicity; enable cluster mode for production scale
 resource "aws_elasticache_replication_group" "main" {
-  replication_group_id          = "xelta-${var.environment}-redis-${var.region}"
-  replication_group_description = "Redis cluster for xelta ${var.environment} in ${var.region}"
+  replication_group_id = "xelta-${var.environment}-redis-${var.region}"
+  # Corrected: 'replication_group_description' changed to 'description'
+  description          = "Redis cluster for xelta ${var.environment} in ${var.region}"
 
   engine               = "redis"
   engine_version       = "7.0"
@@ -73,7 +74,7 @@ resource "aws_elasticache_replication_group" "main" {
   at_rest_encryption_enabled = true
   kms_key_id                 = var.kms_key_id
   transit_encryption_enabled = true
-  auth_token_enabled         = false # Enable for production with strong token
+  # Removed: 'auth_token_enabled' is no longer a supported argument
 
   # Automatic failover (requires >= 2 nodes)
   automatic_failover_enabled = var.num_cache_nodes > 1 ? true : false
