@@ -39,6 +39,7 @@ module "vpc_us_east_1" {
   vpc_cidr           = var.vpc_cidr_blocks["us-east-1"]
   # 3 AZs for high availability
   availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  single_nat_gateway = var.environment == "dev" ? true : false
 }
 
 module "eks_us_east_1" {
@@ -126,6 +127,7 @@ module "vpc_eu_central_1" {
   region             = "eu-central-1"
   vpc_cidr           = var.vpc_cidr_blocks["eu-central-1"]
   availability_zones = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+  single_nat_gateway = var.environment == "dev" ? true : false
 }
 
 module "eks_eu_central_1" {
@@ -213,6 +215,7 @@ module "vpc_ap_south_1" {
   region             = "ap-south-1"
   vpc_cidr           = var.vpc_cidr_blocks["ap-south-1"]
   availability_zones = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  single_nat_gateway = var.environment == "dev" ? true : false
 }
 
 module "eks_ap_south_1" {
