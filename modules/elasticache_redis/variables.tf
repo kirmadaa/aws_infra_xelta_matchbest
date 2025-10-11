@@ -28,10 +28,6 @@ variable "num_cache_nodes" {
   type        = number
 }
 
-variable "kms_key_id" {
-  description = "KMS key ID for encryption"
-  type        = string
-}
 
 variable "allowed_security_group_ids" {
   description = "Security group IDs allowed to access Redis"

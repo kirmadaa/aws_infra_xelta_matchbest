@@ -72,7 +72,6 @@ resource "aws_elasticache_replication_group" "main" {
 
   # Encryption
   at_rest_encryption_enabled = true
-  kms_key_id                 = var.kms_key_id
   transit_encryption_enabled = true
   # Removed: 'auth_token_enabled' is no longer a supported argument
 

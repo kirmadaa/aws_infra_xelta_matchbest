@@ -4,17 +4,11 @@ data "aws_route53_zone" "main" {
   private_zone = false
 }
 
-# Global KMS key (replicated to all regions for secrets encryption)
-module "kms" {
-  source      = "./modules/kms"
-  environment = var.environment
-}
 
 # Global secrets (stored in us-east-1, replicated to other regions)
 module "secrets" {
   source       = "./modules/secrets"
   environment  = var.environment
-  kms_key_id   = module.kms.kms_key_id
 }
 
 # ===========================
@@ -45,8 +39,6 @@ module "eks_us_east_1" {
   node_desired_size   = var.eks_node_desired_size
   node_min_size       = var.eks_node_min_size
   node_max_size       = var.eks_node_max_size
-
-  kms_key_arn         = module.kms.kms_key_arn
 }
 
 module "alb_us_east_1" {
@@ -86,7 +78,6 @@ module "redis_us_east_1" {
 
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-  kms_key_id      = module.kms.kms_key_arn
 
   allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
 }
@@ -103,7 +94,6 @@ module "aurora_us_east_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  kms_key_id     = module.kms.kms_key_arn
   db_secret_arn  = module.secrets.db_secret_arn
 
   allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
@@ -136,8 +126,6 @@ module "eks_eu_central_1" {
   node_desired_size   = var.eks_node_desired_size
   node_min_size       = var.eks_node_min_size
   node_max_size       = var.eks_node_max_size
-
-  kms_key_arn         = module.kms.kms_key_arn
 }
 
 module "alb_eu_central_1" {
@@ -177,7 +165,6 @@ module "redis_eu_central_1" {
 
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-  kms_key_id      = module.kms.kms_key_arn
 
   allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
 }
@@ -194,7 +181,6 @@ module "aurora_eu_central_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  kms_key_id     = module.kms.kms_key_arn
   db_secret_arn  = module.secrets.db_secret_arn
 
   allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
@@ -227,8 +213,6 @@ module "eks_ap_south_1" {
   node_desired_size   = var.eks_node_desired_size
   node_min_size       = var.eks_node_min_size
   node_max_size       = var.eks_node_max_size
-
-  kms_key_arn         = module.kms.kms_key_arn
 }
 
 module "alb_ap_south_1" {
@@ -268,7 +252,6 @@ module "redis_ap_south_1" {
 
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-  kms_key_id      = module.kms.kms_key_arn
 
   allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]
 }
@@ -285,7 +268,6 @@ module "aurora_ap_south_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  kms_key_id     = module.kms.kms_key_arn
   db_secret_arn  = module.secrets.db_secret_arn
 
   allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]

@@ -96,10 +96,6 @@ output "db_secret_arn" {
   sensitive   = true
 }
 
-output "kms_key_id" {
-  description = "KMS key ID for encryption"
-  value       = module.kms.kms_key_id
-}
 
 # kubectl configuration commands
 output "kubectl_config_commands" {
