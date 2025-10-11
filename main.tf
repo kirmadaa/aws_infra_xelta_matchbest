@@ -6,9 +6,25 @@ data "aws_route53_zone" "main" {
 
 
 # Global secrets (stored in us-east-1, replicated to other regions)
-module "secrets" {
-  source       = "./modules/secrets"
-  environment  = var.environment
+module "secrets_us_east_1" {
+  source    = "./modules/secrets"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+}
+
+module "secrets_eu_central_1" {
+  source    = "./modules/secrets"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+}
+
+module "secrets_ap_south_1" {
+  source    = "./modules/secrets"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
 }
 
 # ===========================
@@ -94,7 +110,7 @@ module "aurora_us_east_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  db_secret_arn  = module.secrets.db_secret_arn
+  db_secret_arn  = module.secrets_us_east_1.db_secret_arn
 
   allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
 }
@@ -181,7 +197,7 @@ module "aurora_eu_central_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  db_secret_arn  = module.secrets.db_secret_arn
+  db_secret_arn  = module.secrets_eu_central_1.db_secret_arn
 
   allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
 }
@@ -268,7 +284,7 @@ module "aurora_ap_south_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  db_secret_arn  = module.secrets.db_secret_arn
+  db_secret_arn  = module.secrets_ap_south_1.db_secret_arn
 
   allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]
 }
