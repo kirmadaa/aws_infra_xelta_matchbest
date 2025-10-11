@@ -42,8 +42,3 @@ variable "node_max_size" {
   description = "Maximum number of nodes"
   type        = number
 }
-
-variable "kms_key_arn" {
-  description = "KMS key ARN for EKS encryption"
-  type        = string
-}

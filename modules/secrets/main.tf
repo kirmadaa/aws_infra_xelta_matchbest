@@ -8,7 +8,6 @@ resource "random_password" "db_password" {
 resource "aws_secretsmanager_secret" "db_credentials" {
   name        = "xelta-${var.environment}-db-credentials"
   description = "Database credentials for xelta ${var.environment}"
-  kms_key_id  = var.kms_key_id
 
   recovery_window_in_days = 7
 

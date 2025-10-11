@@ -82,7 +82,6 @@ resource "aws_rds_cluster" "main" {
 
   # Encryption
   storage_encrypted = true
-  kms_key_id        = var.kms_key_id
 
   # Backup
   backup_retention_period    = 7
@@ -115,7 +114,6 @@ resource "aws_rds_cluster_instance" "main" {
   publicly_accessible = false
 
   performance_insights_enabled        = true
-  performance_insights_kms_key_id = var.kms_key_id
 
   tags = {
     Name        = "xelta-${var.environment}-aurora-${var.region}-${count.index + 1}"
