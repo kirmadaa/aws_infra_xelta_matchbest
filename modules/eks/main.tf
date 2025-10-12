@@ -61,6 +61,12 @@ resource "aws_eks_cluster" "main" {
     security_group_ids      = [aws_security_group.cluster.id]
   }
 
+  encryption_config {
+    provider {
+      key_arn = var.kms_key_arn
+    }
+    resources = ["secrets"]
+  }
 
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
@@ -225,6 +231,7 @@ resource "aws_launch_template" "node_group" {
       volume_size           = 100
       volume_type           = "gp3"
       encrypted             = true
+      kms_key_id            = var.kms_key_arn
       delete_on_termination = true
     }
   }
@@ -292,6 +299,14 @@ resource "aws_iam_policy" "app_secrets" {
         ]
         Resource = "arn:aws:secretsmanager:::secret:xelta-${var.environment}-*"
       },
+      {
+        Effect   = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+        ]
+        Resource = var.kms_key_arn
+      }
     ]
   })
 
