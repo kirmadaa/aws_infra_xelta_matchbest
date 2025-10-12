@@ -1,5 +1,6 @@
 # Fetch DB credentials from Secrets Manager
 data "aws_secretsmanager_secret_version" "db_credentials" {
+  provider  = aws
   secret_id = var.db_secret_arn
 }
 

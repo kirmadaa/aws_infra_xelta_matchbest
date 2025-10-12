@@ -90,10 +90,14 @@ output "route53_domain" {
   value       = var.domain_name
 }
 
-output "db_secret_arn" {
-  description = "ARN of database credentials secret in Secrets Manager"
-  value       = module.secrets.db_secret_arn
-  sensitive   = true
+output "db_secret_arns" {
+  description = "ARNs of the database credentials secrets in each region"
+  value = {
+    us-east-1    = module.secrets_us_east_1.db_secret_arn
+    eu-central-1 = module.secrets_eu_central_1.db_secret_arn
+    ap-south-1   = module.secrets_ap_south_1.db_secret_arn
+  }
+  sensitive = true
 }
 
 

@@ -6,9 +6,25 @@ data "aws_route53_zone" "main" {
 
 
 # Global secrets (stored in us-east-1, replicated to other regions)
-module "secrets" {
-  source       = "./modules/secrets"
-  environment  = var.environment
+module "secrets_us_east_1" {
+  source    = "./modules/secrets"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+}
+
+module "secrets_eu_central_1" {
+  source    = "./modules/secrets"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+}
+
+module "secrets_ap_south_1" {
+  source    = "./modules/secrets"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
 }
 
 # ===========================
@@ -23,6 +39,7 @@ module "vpc_us_east_1" {
   vpc_cidr           = var.vpc_cidr_blocks["us-east-1"]
   # 3 AZs for high availability
   availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  single_nat_gateway = var.environment == "dev" ? true : false
 }
 
 module "eks_us_east_1" {
@@ -94,7 +111,7 @@ module "aurora_us_east_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  db_secret_arn  = module.secrets.db_secret_arn
+  db_secret_arn  = module.secrets_us_east_1.db_secret_arn
 
   allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
 }
@@ -110,6 +127,7 @@ module "vpc_eu_central_1" {
   region             = "eu-central-1"
   vpc_cidr           = var.vpc_cidr_blocks["eu-central-1"]
   availability_zones = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+  single_nat_gateway = var.environment == "dev" ? true : false
 }
 
 module "eks_eu_central_1" {
@@ -181,7 +199,7 @@ module "aurora_eu_central_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  db_secret_arn  = module.secrets.db_secret_arn
+  db_secret_arn  = module.secrets_eu_central_1.db_secret_arn
 
   allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
 }
@@ -197,6 +215,7 @@ module "vpc_ap_south_1" {
   region             = "ap-south-1"
   vpc_cidr           = var.vpc_cidr_blocks["ap-south-1"]
   availability_zones = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  single_nat_gateway = var.environment == "dev" ? true : false
 }
 
 module "eks_ap_south_1" {
@@ -268,7 +287,7 @@ module "aurora_ap_south_1" {
 
   instance_class = var.aurora_instance_class
   instance_count = var.aurora_instance_count
-  db_secret_arn  = module.secrets.db_secret_arn
+  db_secret_arn  = module.secrets_ap_south_1.db_secret_arn
 
   allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]
 }
