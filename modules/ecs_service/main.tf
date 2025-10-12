@@ -52,17 +52,38 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Security Group for ECS Service
-resource "aws_security_group" "ecs_service" {
-  name        = "xelta-${var.environment}-${var.region}-ecs-service"
-  description = "Allow traffic to ECS service from within the VPC"
+# Security Group for the NLB
+resource "aws_security_group" "nlb" {
+  name        = "xelta-${var.environment}-${var.region}-nlb"
+  description = "Allow traffic to NLB from within the VPC"
   vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
+    cidr_blocks = [var.vpc_cidr] # Allow traffic from the VPC, which includes the API Gateway VPC Link
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Security Group for ECS Service (Zero Trust)
+resource "aws_security_group" "ecs_service" {
+  name        = "xelta-${var.environment}-${var.region}-ecs-service"
+  description = "Allow traffic ONLY from the NLB"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.nlb.id] # Only allow traffic from the NLB's security group
   }
 
   egress {
@@ -79,6 +100,7 @@ resource "aws_lb" "nlb" {
   internal           = true
   load_balancer_type = "network"
   subnets            = var.private_subnet_ids
+  security_groups    = [aws_security_group.nlb.id]
 }
 
 # Target Group for NLB
