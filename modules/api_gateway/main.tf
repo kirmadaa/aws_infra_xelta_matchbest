@@ -1,3 +1,5 @@
+# modules/api_gateway/main.tf
+
 # API Gateway v2 (HTTP API)
 resource "aws_apigatewayv2_api" "main" {
   name          = "xelta-${var.environment}-${var.region}"
@@ -15,9 +17,13 @@ resource "aws_apigatewayv2_vpc_link" "main" {
 resource "aws_apigatewayv2_integration" "main" {
   api_id             = aws_apigatewayv2_api.main.id
   integration_type   = "HTTP_PROXY"
+  integration_method = "ANY"  # FIXED: Added required integration_method
   integration_uri    = var.nlb_listener_arn
   connection_type    = "VPC_LINK"
   connection_id      = aws_apigatewayv2_vpc_link.main.id
+  
+  # Optional: Add timeout configuration
+  timeout_milliseconds = 30000
 }
 
 # API Gateway Route
@@ -32,4 +38,30 @@ resource "aws_apigatewayv2_stage" "main" {
   api_id      = aws_apigatewayv2_api.main.id
   name        = "$default"
   auto_deploy = true
+  
+  # Optional: Add logging
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gateway.arn
+    format = jsonencode({
+      requestId      = "$context.requestId"
+      ip             = "$context.identity.sourceIp"
+      requestTime    = "$context.requestTime"
+      httpMethod     = "$context.httpMethod"
+      routeKey       = "$context.routeKey"
+      status         = "$context.status"
+      protocol       = "$context.protocol"
+      responseLength = "$context.responseLength"
+    })
+  }
+}
+
+# CloudWatch Log Group for API Gateway
+resource "aws_cloudwatch_log_group" "api_gateway" {
+  name              = "/aws/apigateway/xelta-${var.environment}-${var.region}"
+  retention_in_days = 7
+
+  tags = {
+    Name        = "xelta-${var.environment}-apigw-logs-${var.region}"
+    Environment = var.environment
+  }
 }
