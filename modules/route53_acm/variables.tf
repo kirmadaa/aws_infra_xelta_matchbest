@@ -18,12 +18,12 @@ variable "route53_zone_id" {
   type        = string
 }
 
-variable "alb_dns_name" {
-  description = "ALB DNS name"
+variable "cdn_dns_name" {
+  description = "CloudFront distribution DNS name"
   type        = string
 }
 
-variable "alb_zone_id" {
-  description = "ALB Route53 zone ID"
+variable "cdn_zone_id" {
+  description = "CloudFront distribution Route53 zone ID"
   type        = string
 }
