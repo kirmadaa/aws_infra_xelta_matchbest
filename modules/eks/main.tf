@@ -57,15 +57,8 @@ resource "aws_eks_cluster" "main" {
   vpc_config {
     subnet_ids              = var.private_subnet_ids
     endpoint_private_access = true
-    endpoint_public_access  = true # Set false for production
+    endpoint_public_access  = true # SET FALSE AFTER INTIAL TESTING IS COMPLETE AND USE JUMP SERVER TO ACCESS THE CLUSTER
     security_group_ids      = [aws_security_group.cluster.id]
-  }
-
-  encryption_config {
-    provider {
-      key_arn = var.kms_key_arn
-    }
-    resources = ["secrets"]
   }
 
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
@@ -231,7 +224,6 @@ resource "aws_launch_template" "node_group" {
       volume_size           = 100
       volume_type           = "gp3"
       encrypted             = true
-      kms_key_id            = var.kms_key_arn
       delete_on_termination = true
     }
   }
@@ -298,14 +290,6 @@ resource "aws_iam_policy" "app_secrets" {
           "secretsmanager:DescribeSecret"
         ]
         Resource = "arn:aws:secretsmanager:::secret:xelta-${var.environment}-*"
-      },
-      {
-        Effect   = "Allow"
-        Action = [
-          "kms:Decrypt",
-          "kms:DescribeKey"
-        ]
-        Resource = var.kms_key_arn
       }
     ]
   })
