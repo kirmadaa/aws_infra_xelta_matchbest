@@ -69,14 +69,16 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
+  # FIXED: Use single origins instead of origin groups for write methods
+  # Route to primary region (us-east-1) for all requests
   default_cache_behavior {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "group-us-east-1"
+    target_origin_id = "us-east-1"  # Direct to origin, not origin group
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "Origin"]
+      headers      = ["*"]  # Forward all headers for API requests
       
       cookies {
         forward = "all"
@@ -90,15 +92,16 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
   }
 
+  # EU region routing - direct to origin
   ordered_cache_behavior {
     path_pattern     = "/eu/*"
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "group-eu-central-1"
+    target_origin_id = "eu-central-1"  # Direct to origin, not origin group
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "Origin"]
+      headers      = ["*"]
       
       cookies {
         forward = "all"
@@ -112,15 +115,16 @@ resource "aws_cloudfront_distribution" "main" {
     compress               = true
   }
 
+  # AP region routing - direct to origin
   ordered_cache_behavior {
     path_pattern     = "/ap/*"
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "group-ap-south-1"
+    target_origin_id = "ap-south-1"  # Direct to origin, not origin group
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "Origin"]
+      headers      = ["*"]
       
       cookies {
         forward = "all"
