@@ -9,17 +9,6 @@ vpc_cidr_blocks = {
   "ap-south-1"   = "10.22.0.0/16"
 }
 
-# EKS Configuration (Production-sized)
-eks_version             = "1.28"
-eks_node_instance_types = ["m5.xlarge"]
-eks_node_desired_size   = 6
-eks_node_min_size       = 6
-eks_node_max_size       = 12
-
-# Aurora Configuration (Production)
-aurora_instance_class = "db.r6g.2xlarge"
-aurora_instance_count = 3 # 1 writer + 2 readers
-enable_aurora         = true
 
 # Redis Configuration (Production)
 redis_node_type       = "cache.r6g.xlarge"

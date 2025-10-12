@@ -39,38 +39,15 @@ resource "aws_acm_certificate_validation" "main" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# Route53 Latency-Based Routing Record
-# Routes traffic to nearest region based on latency
+# Route53 Alias Record for CloudFront Distribution
 resource "aws_route53_record" "app" {
   zone_id = var.route53_zone_id
   name    = var.domain_name
   type    = "A"
 
   alias {
-    name                   = var.alb_dns_name
-    zone_id                = var.alb_zone_id
-    evaluate_target_health = true
-  }
-
-  # Latency-based routing policy
-  set_identifier = "${var.environment}-${var.region}"
-
-  latency_routing_policy {
-    region = var.region
-  }
-}
-
-# Health Check for ALB
-resource "aws_route53_health_check" "alb" {
-  fqdn              = var.alb_dns_name
-  port              = 443
-  type              = "HTTPS"
-  resource_path     = "/health"
-  failure_threshold = 3
-  request_interval  = 30
-
-  tags = {
-    Name        = "xelta-${var.environment}-health-${var.region}"
-    Environment = var.environment
+    name                   = var.cdn_dns_name
+    zone_id                = var.cdn_zone_id
+    evaluate_target_health = false # CloudFront doesn't support Route 53 health checks
   }
 }
