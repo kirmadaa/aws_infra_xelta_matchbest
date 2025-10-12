@@ -54,13 +54,15 @@ resource "aws_lb" "main" {
   }
 }
 
-# Target Group (for EKS ingress controller to register targets)
-resource "aws_lb_target_group" "app" {
-  name        = "xelta-${var.environment}-tg-${var.region}"
-  port        = 80
-  protocol    = "HTTP"
+# Target Groups
+resource "aws_lb_target_group" "main" {
+  for_each = var.target_groups
+
+  name        = "xelta-${var.environment}-tg-${each.key}-${var.region}"
+  port        = each.value.port
+  protocol    = each.value.protocol
   vpc_id      = var.vpc_id
-  target_type = "ip" # For EKS with AWS Load Balancer Controller
+  target_type = "ip" # For Fargate
 
   health_check {
     enabled             = true
@@ -68,15 +70,15 @@ resource "aws_lb_target_group" "app" {
     unhealthy_threshold = 2
     timeout             = 5
     interval            = 30
-    path                = "/health"
-    protocol            = "HTTP"
+    path                = each.value.health_check_path
+    protocol            = each.value.protocol
     matcher             = "200"
   }
 
   deregistration_delay = 30
 
   tags = {
-    Name        = "xelta-${var.environment}-tg-${var.region}"
+    Name        = "xelta-${var.environment}-tg-${each.key}-${var.region}"
     Environment = var.environment
   }
 }
@@ -91,13 +93,33 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
+    target_group_arn = aws_lb_target_group.main[var.default_target_group_key].arn
   }
 
   tags = {
     Environment = var.environment
   }
 }
+
+# Listener Rules
+resource "aws_lb_listener_rule" "main" {
+  for_each = var.listener_rules
+
+  listener_arn = aws_lb_listener.https.arn
+  priority     = each.value.priority
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main[each.value.target_group_key].arn
+  }
+
+  condition {
+    path_pattern {
+      values = each.value.path_patterns
+    }
+  }
+}
+
 
 # HTTP Listener (redirect to HTTPS)
 resource "aws_lb_listener" "http" {

@@ -42,22 +42,6 @@ module "vpc_us_east_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
-module "eks_us_east_1" {
-  source    = "./modules/eks"
-  providers = { aws = aws.us_east_1 }
-
-  environment         = var.environment
-  region              = "us-east-1"
-  cluster_version     = var.eks_version
-  vpc_id              = module.vpc_us_east_1.vpc_id
-  private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
-
-  node_instance_types = var.eks_node_instance_types
-  node_desired_size   = var.eks_node_desired_size
-  node_min_size       = var.eks_node_min_size
-  node_max_size       = var.eks_node_max_size
-}
-
 module "alb_us_east_1" {
   source    = "./modules/alb_ingress"
   providers = { aws = aws.us_east_1 }
@@ -66,8 +50,67 @@ module "alb_us_east_1" {
   region            = "us-east-1"
   vpc_id            = module.vpc_us_east_1.vpc_id
   public_subnet_ids = module.vpc_us_east_1.public_subnet_ids
-
   certificate_arn   = module.route53_acm_us_east_1.certificate_arn
+
+  # Create two target groups
+  target_groups = {
+    frontend = {
+      port              = 3000
+      protocol          = "HTTP"
+      health_check_path = "/"
+    },
+    backend = {
+      port              = 8080
+      protocol          = "HTTP"
+      health_check_path = "/health"
+    }
+  }
+
+  # Add listener rules to route traffic
+  listener_rules = {
+    backend = {
+      priority         = 100
+      path_patterns    = ["/api/*"]
+      target_group_key = "backend"
+    }
+  }
+}
+
+module "ecs_frontend_us_east_1" {
+  source    = "./modules/ecs"
+  providers = { aws = aws.us_east_1 }
+
+  service_name         = "frontend"
+  container_image      = "your-account-id.dkr.ecr.us-east-1.amazonaws.com/frontend:latest"
+  container_port       = 3000
+  environment          = var.environment
+  region               = "us-east-1"
+  vpc_id               = module.vpc_us_east_1.vpc_id
+  private_subnet_ids   = module.vpc_us_east_1.private_subnet_ids
+  alb_target_group_arn = module.alb_us_east_1.target_group_arns["frontend"]
+}
+
+module "ecs_backend_us_east_1" {
+  source    = "./modules/ecs"
+  providers = { aws = aws.us_east_1 }
+
+  service_name         = "backend"
+  container_image      = "your-account-id.dkr.ecr.us-east-1.amazonaws.com/backend:latest"
+  container_port       = 8080
+  environment          = var.environment
+  region               = "us-east-1"
+  vpc_id               = module.vpc_us_east_1.vpc_id
+  private_subnet_ids   = module.vpc_us_east_1.private_subnet_ids
+  alb_target_group_arn = module.alb_us_east_1.target_group_arns["backend"]
+}
+
+module "waf_us_east_1" {
+  source    = "./modules/waf"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+  region      = "us-east-1"
+  alb_arn     = module.alb_us_east_1.alb_arn
 }
 
 module "route53_acm_us_east_1" {
@@ -96,7 +139,10 @@ module "redis_us_east_1" {
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
 
-  allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
+  allowed_security_group_ids = [
+    module.ecs_frontend_us_east_1.service_security_group_id,
+    module.ecs_backend_us_east_1.service_security_group_id
+  ]
 }
 
 module "aurora_us_east_1" {
@@ -113,7 +159,10 @@ module "aurora_us_east_1" {
   instance_count = var.aurora_instance_count
   db_secret_arn  = module.secrets_us_east_1.db_secret_arn
 
-  allowed_security_group_ids = [module.eks_us_east_1.node_security_group_id]
+  allowed_security_group_ids = [
+    module.ecs_frontend_us_east_1.service_security_group_id,
+    module.ecs_backend_us_east_1.service_security_group_id
+  ]
 }
 
 # ===============================
@@ -130,22 +179,6 @@ module "vpc_eu_central_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
-module "eks_eu_central_1" {
-  source    = "./modules/eks"
-  providers = { aws = aws.eu_central_1 }
-
-  environment         = var.environment
-  region              = "eu-central-1"
-  cluster_version     = var.eks_version
-  vpc_id              = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
-
-  node_instance_types = var.eks_node_instance_types
-  node_desired_size   = var.eks_node_desired_size
-  node_min_size       = var.eks_node_min_size
-  node_max_size       = var.eks_node_max_size
-}
-
 module "alb_eu_central_1" {
   source    = "./modules/alb_ingress"
   providers = { aws = aws.eu_central_1 }
@@ -154,8 +187,65 @@ module "alb_eu_central_1" {
   region            = "eu-central-1"
   vpc_id            = module.vpc_eu_central_1.vpc_id
   public_subnet_ids = module.vpc_eu_central_1.public_subnet_ids
-
   certificate_arn   = module.route53_acm_eu_central_1.certificate_arn
+
+  target_groups = {
+    frontend = {
+      port              = 3000
+      protocol          = "HTTP"
+      health_check_path = "/"
+    },
+    backend = {
+      port              = 8080
+      protocol          = "HTTP"
+      health_check_path = "/health"
+    }
+  }
+
+  listener_rules = {
+    backend = {
+      priority         = 100
+      path_patterns    = ["/api/*"]
+      target_group_key = "backend"
+    }
+  }
+}
+
+module "ecs_frontend_eu_central_1" {
+  source    = "./modules/ecs"
+  providers = { aws = aws.eu_central_1 }
+
+  service_name         = "frontend"
+  container_image      = "your-account-id.dkr.ecr.eu-central-1.amazonaws.com/frontend:latest"
+  container_port       = 3000
+  environment          = var.environment
+  region               = "eu-central-1"
+  vpc_id               = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids   = module.vpc_eu_central_1.private_subnet_ids
+  alb_target_group_arn = module.alb_eu_central_1.target_group_arns["frontend"]
+}
+
+module "ecs_backend_eu_central_1" {
+  source    = "./modules/ecs"
+  providers = { aws = aws.eu_central_1 }
+
+  service_name         = "backend"
+  container_image      = "your-account-id.dkr.ecr.eu-central-1.amazonaws.com/backend:latest"
+  container_port       = 8080
+  environment          = var.environment
+  region               = "eu-central-1"
+  vpc_id               = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids   = module.vpc_eu_central_1.private_subnet_ids
+  alb_target_group_arn = module.alb_eu_central_1.target_group_arns["backend"]
+}
+
+module "waf_eu_central_1" {
+  source    = "./modules/waf"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+  region      = "eu-central-1"
+  alb_arn     = module.alb_eu_central_1.alb_arn
 }
 
 module "route53_acm_eu_central_1" {
@@ -184,7 +274,10 @@ module "redis_eu_central_1" {
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
 
-  allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
+  allowed_security_group_ids = [
+    module.ecs_frontend_eu_central_1.service_security_group_id,
+    module.ecs_backend_eu_central_1.service_security_group_id
+  ]
 }
 
 module "aurora_eu_central_1" {
@@ -201,7 +294,10 @@ module "aurora_eu_central_1" {
   instance_count = var.aurora_instance_count
   db_secret_arn  = module.secrets_eu_central_1.db_secret_arn
 
-  allowed_security_group_ids = [module.eks_eu_central_1.node_security_group_id]
+  allowed_security_group_ids = [
+    module.ecs_frontend_eu_central_1.service_security_group_id,
+    module.ecs_backend_eu_central_1.service_security_group_id
+  ]
 }
 
 # ============================
@@ -218,22 +314,6 @@ module "vpc_ap_south_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
-module "eks_ap_south_1" {
-  source    = "./modules/eks"
-  providers = { aws = aws.ap_south_1 }
-
-  environment         = var.environment
-  region              = "ap-south-1"
-  cluster_version     = var.eks_version
-  vpc_id              = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
-
-  node_instance_types = var.eks_node_instance_types
-  node_desired_size   = var.eks_node_desired_size
-  node_min_size       = var.eks_node_min_size
-  node_max_size       = var.eks_node_max_size
-}
-
 module "alb_ap_south_1" {
   source    = "./modules/alb_ingress"
   providers = { aws = aws.ap_south_1 }
@@ -242,8 +322,65 @@ module "alb_ap_south_1" {
   region            = "ap-south-1"
   vpc_id            = module.vpc_ap_south_1.vpc_id
   public_subnet_ids = module.vpc_ap_south_1.public_subnet_ids
-
   certificate_arn   = module.route53_acm_ap_south_1.certificate_arn
+
+  target_groups = {
+    frontend = {
+      port              = 3000
+      protocol          = "HTTP"
+      health_check_path = "/"
+    },
+    backend = {
+      port              = 8080
+      protocol          = "HTTP"
+      health_check_path = "/health"
+    }
+  }
+
+  listener_rules = {
+    backend = {
+      priority         = 100
+      path_patterns    = ["/api/*"]
+      target_group_key = "backend"
+    }
+  }
+}
+
+module "ecs_frontend_ap_south_1" {
+  source    = "./modules/ecs"
+  providers = { aws = aws.ap_south_1 }
+
+  service_name         = "frontend"
+  container_image      = "your-account-id.dkr.ecr.ap-south-1.amazonaws.com/frontend:latest"
+  container_port       = 3000
+  environment          = var.environment
+  region               = "ap-south-1"
+  vpc_id               = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids   = module.vpc_ap_south_1.private_subnet_ids
+  alb_target_group_arn = module.alb_ap_south_1.target_group_arns["frontend"]
+}
+
+module "ecs_backend_ap_south_1" {
+  source    = "./modules/ecs"
+  providers = { aws = aws.ap_south_1 }
+
+  service_name         = "backend"
+  container_image      = "your-account-id.dkr.ecr.ap-south-1.amazonaws.com/backend:latest"
+  container_port       = 8080
+  environment          = var.environment
+  region               = "ap-south-1"
+  vpc_id               = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids   = module.vpc_ap_south_1.private_subnet_ids
+  alb_target_group_arn = module.alb_ap_south_1.target_group_arns["backend"]
+}
+
+module "waf_ap_south_1" {
+  source    = "./modules/waf"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
+  region      = "ap-south-1"
+  alb_arn     = module.alb_ap_south_1.alb_arn
 }
 
 module "route53_acm_ap_south_1" {
@@ -272,7 +409,115 @@ module "redis_ap_south_1" {
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
 
-  allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]
+  allowed_security_group_ids = [
+    module.ecs_frontend_ap_south_1.service_security_group_id,
+    module.ecs_backend_ap_south_1.service_security_group_id
+  ]
+}
+
+# ============================
+# GLOBAL RESOURCES (CLOUDFRONT)
+# ============================
+
+# Provider for global resources that must be in us-east-1
+provider "aws" {
+  alias  = "us-east-1-global"
+  region = "us-east-1"
+}
+
+resource "aws_cloudfront_distribution" "cdn" {
+  provider = aws.us-east-1-global
+
+  origin {
+    domain_name = module.alb_us_east_1.alb_dns_name
+    origin_id   = "alb-us-east-1"
+    # Custom origin config for ALB
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  origin {
+    domain_name = module.alb_eu_central_1.alb_dns_name
+    origin_id   = "alb-eu-central-1"
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  origin {
+    domain_name = module.alb_ap_south_1.alb_dns_name
+    origin_id   = "alb-ap-south-1"
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "CDN for xelta.ai"
+  default_root_object = "index.html"
+
+  aliases = [var.domain_name, "www.${var.domain_name}"]
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "alb-us-east-1" # Default origin
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  # API cache behavior - forward all headers and do not cache
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD", "OPTIONS"]
+    target_origin_id = "alb-us-east-1" # This will be overwritten by origin groups when we set up latency-based routing in Route 53
+
+    forwarded_values {
+      query_string = true
+      headers      = ["*"]
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 0
+    max_ttl                = 0
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn = module.route53_acm_us_east_1.certificate_arn # Must be in us-east-1
+    ssl_support_method  = "sni-only"
+  }
 }
 
 module "aurora_ap_south_1" {
@@ -289,5 +534,8 @@ module "aurora_ap_south_1" {
   instance_count = var.aurora_instance_count
   db_secret_arn  = module.secrets_ap_south_1.db_secret_arn
 
-  allowed_security_group_ids = [module.eks_ap_south_1.node_security_group_id]
+  allowed_security_group_ids = [
+    module.ecs_frontend_ap_south_1.service_security_group_id,
+    module.ecs_backend_ap_south_1.service_security_group_id
+  ]
 }
