@@ -27,3 +27,12 @@ variable "cdn_zone_id" {
   description = "CloudFront distribution Route53 zone ID"
   type        = string
 }
+
+variable "regional_alb_endpoints" {
+  description = "A map of region to ALB endpoints"
+  type        = map(object({
+    dns_name = string
+    zone_id  = string
+  }))
+  default = {}
+}

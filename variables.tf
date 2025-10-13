@@ -42,6 +42,28 @@ variable "redis_num_cache_nodes" {
   default     = 1
 }
 
+variable "backend_image" {
+  description = "Docker image for the backend service"
+  type        = string
+}
+
+variable "frontend_image" {
+  description = "Docker image for the frontend service"
+  type        = string
+}
+
+variable "db_username" {
+  description = "Username for the RDS database"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_password" {
+  description = "Password for the RDS database"
+  type        = string
+  sensitive   = true
+}
+
 variable "enable_redis" {
   description = "Enable ElastiCache Redis deployment"
   type        = bool

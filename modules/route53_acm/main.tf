@@ -51,3 +51,42 @@ resource "aws_route53_record" "app" {
     evaluate_target_health = false # CloudFront doesn't support Route 53 health checks
   }
 }
+
+# Route 53 health checks for each region
+resource "aws_route53_health_check" "regional" {
+  for_each = var.regional_alb_endpoints
+
+  fqdn                            = "api-${each.key}.${var.domain_name}"
+  port                            = 443
+  type                            = "HTTPS"
+  resource_path                   = "/health"
+  failure_threshold               = "3"
+  request_interval                = "30"
+
+  tags = {
+    Name = "xelta-${var.environment}-${each.key}-health-check"
+  }
+}
+
+# Latency-based routing records
+resource "aws_route53_record" "api_latency" {
+  for_each = var.regional_alb_endpoints
+
+  zone_id = var.route53_zone_id
+  name    = "api"
+  type    = "A"
+
+  set_identifier = each.key
+
+  alias {
+    name                   = each.value.dns_name
+    zone_id                = each.value.zone_id
+    evaluate_target_health = true
+  }
+
+  latency_routing_policy {
+    region = each.key
+  }
+
+  health_check_id = aws_route53_health_check.regional[each.key].id
+}

@@ -40,11 +40,11 @@ module "cdn" {
   route53_zone_id = data.aws_route53_zone.main.zone_id
   waf_web_acl_arn = module.waf.waf_arn
 
-  # Origin info for each regional API Gateway
+  # Origin info for each regional ALB
   origins = {
-    us-east-1    = module.api_gateway_us_east_1.api_endpoint
-    eu-central-1 = module.api_gateway_eu_central_1.api_endpoint
-    ap-south-1   = module.api_gateway_ap_south_1.api_endpoint
+    us-east-1    = module.ecs_service_us_east_1.alb_dns_name
+    eu-central-1 = module.ecs_service_eu_central_1.alb_dns_name
+    ap-south-1   = module.ecs_service_ap_south_1.alb_dns_name
   }
 
   # ACM certificate for the CDN (must be in us-east-1)
@@ -75,19 +75,11 @@ module "ecs_service_us_east_1" {
   vpc_id              = module.vpc_us_east_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["us-east-1"]
   private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
-}
+  public_subnet_ids   = module.vpc_us_east_1.public_subnet_ids
 
-module "api_gateway_us_east_1" {
-  source    = "./modules/api_gateway"
-  providers = { aws = aws.us_east_1 }
-
-  environment                   = var.environment
-  region                        = "us-east-1"
-  vpc_id                        = module.vpc_us_east_1.vpc_id
-  private_subnet_ids            = module.vpc_us_east_1.private_subnet_ids
-  ecs_service_security_group_id = module.ecs_service_us_east_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_us_east_1.service_arn
-  nlb_listener_arn              = module.ecs_service_us_east_1.nlb_listener_arn
+  backend_image       = var.backend_image
+  frontend_image      = var.frontend_image
+  redis_endpoint      = var.enable_redis ? module.redis_us_east_1[0].redis_endpoint : ""
 }
 
 module "route53_acm_us_east_1" {
@@ -102,6 +94,21 @@ module "route53_acm_us_east_1" {
   # Create Route53 record for the CDN
   cdn_dns_name    = module.cdn.cdn_dns_name
   cdn_zone_id     = module.cdn.cdn_zone_id
+
+  regional_alb_endpoints = {
+    us-east-1 = {
+      dns_name = module.ecs_service_us_east_1.alb_dns_name
+      zone_id  = module.ecs_service_us_east_1.alb_zone_id
+    }
+    eu-central-1 = {
+      dns_name = module.ecs_service_eu_central_1.alb_dns_name
+      zone_id  = module.ecs_service_eu_central_1.alb_zone_id
+    }
+    ap-south-1 = {
+      dns_name = module.ecs_service_ap_south_1.alb_dns_name
+      zone_id  = module.ecs_service_ap_south_1.alb_zone_id
+    }
+  }
 }
 
 module "redis_us_east_1" {
@@ -118,6 +125,31 @@ module "redis_us_east_1" {
   num_cache_nodes = var.redis_num_cache_nodes
 
   allowed_security_group_ids = [module.ecs_service_us_east_1.service_security_group_id]
+}
+
+module "rds_us_east_1" {
+  source    = "./modules/rds"
+  providers = { aws = aws.us_east_1 }
+
+  environment        = var.environment
+  region             = "us-east-1"
+  primary_region     = "us-east-1"
+  vpc_id             = module.vpc_us_east_1.vpc_id
+  private_subnet_ids = module.vpc_us_east_1.private_subnet_ids
+  vpc_cidr           = var.vpc_cidr_blocks["us-east-1"]
+  db_username        = var.db_username
+  db_password        = var.db_password
+}
+
+module "monitoring_us_east_1" {
+  source    = "./modules/monitoring"
+  providers = { aws = aws.us_east_1 }
+
+  environment               = var.environment
+  region                    = "us-east-1"
+  backend_ecs_service_name  = module.ecs_service_us_east_1.backend_ecs_service_name
+  frontend_ecs_service_name = module.ecs_service_us_east_1.frontend_ecs_service_name
+  alb_arn_suffix            = module.ecs_service_us_east_1.alb_arn_suffix
 }
 
 
@@ -144,19 +176,11 @@ module "ecs_service_eu_central_1" {
   vpc_id              = module.vpc_eu_central_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
-}
+  public_subnet_ids   = module.vpc_eu_central_1.public_subnet_ids
 
-module "api_gateway_eu_central_1" {
-  source    = "./modules/api_gateway"
-  providers = { aws = aws.eu_central_1 }
-
-  environment                   = var.environment
-  region                        = "eu-central-1"
-  vpc_id                        = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids            = module.vpc_eu_central_1.private_subnet_ids
-  ecs_service_security_group_id = module.ecs_service_eu_central_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_eu_central_1.service_arn
-  nlb_listener_arn              = module.ecs_service_eu_central_1.nlb_listener_arn
+  backend_image       = var.backend_image
+  frontend_image      = var.frontend_image
+  redis_endpoint      = var.enable_redis ? module.redis_eu_central_1[0].redis_endpoint : ""
 }
 
 module "redis_eu_central_1" {
@@ -173,6 +197,31 @@ module "redis_eu_central_1" {
   num_cache_nodes = var.redis_num_cache_nodes
 
   allowed_security_group_ids = [module.ecs_service_eu_central_1.service_security_group_id]
+}
+
+module "rds_eu_central_1" {
+  source    = "./modules/rds"
+  providers = { aws = aws.eu_central_1 }
+
+  environment        = var.environment
+  region             = "eu-central-1"
+  primary_region     = "us-east-1"
+  vpc_id             = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids = module.vpc_eu_central_1.private_subnet_ids
+  vpc_cidr           = var.vpc_cidr_blocks["eu-central-1"]
+  db_username        = var.db_username
+  db_password        = var.db_password
+}
+
+module "monitoring_eu_central_1" {
+  source    = "./modules/monitoring"
+  providers = { aws = aws.eu_central_1 }
+
+  environment               = var.environment
+  region                    = "eu-central-1"
+  backend_ecs_service_name  = module.ecs_service_eu_central_1.backend_ecs_service_name
+  frontend_ecs_service_name = module.ecs_service_eu_central_1.frontend_ecs_service_name
+  alb_arn_suffix            = module.ecs_service_eu_central_1.alb_arn_suffix
 }
 
 
@@ -199,19 +248,11 @@ module "ecs_service_ap_south_1" {
   vpc_id              = module.vpc_ap_south_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["ap-south-1"]
   private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
-}
+  public_subnet_ids   = module.vpc_ap_south_1.public_subnet_ids
 
-module "api_gateway_ap_south_1" {
-  source    = "./modules/api_gateway"
-  providers = { aws = aws.ap_south_1 }
-
-  environment                   = var.environment
-  region                        = "ap-south-1"
-  vpc_id                        = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids            = module.vpc_ap_south_1.private_subnet_ids
-  ecs_service_security_group_id = module.ecs_service_ap_south_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_ap_south_1.service_arn
-  nlb_listener_arn              = module.ecs_service_ap_south_1.nlb_listener_arn
+  backend_image       = var.backend_image
+  frontend_image      = var.frontend_image
+  redis_endpoint      = var.enable_redis ? module.redis_ap_south_1[0].redis_endpoint : ""
 }
 
 module "redis_ap_south_1" {
@@ -228,4 +269,29 @@ module "redis_ap_south_1" {
   num_cache_nodes = var.redis_num_cache_nodes
 
   allowed_security_group_ids = [module.ecs_service_ap_south_1.service_security_group_id]
+}
+
+module "rds_ap_south_1" {
+  source    = "./modules/rds"
+  providers = { aws = aws.ap_south_1 }
+
+  environment        = var.environment
+  region             = "ap-south-1"
+  primary_region     = "us-east-1"
+  vpc_id             = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids = module.vpc_ap_south_1.private_subnet_ids
+  vpc_cidr           = var.vpc_cidr_blocks["ap-south-1"]
+  db_username        = var.db_username
+  db_password        = var.db_password
+}
+
+module "monitoring_ap_south_1" {
+  source    = "./modules/monitoring"
+  providers = { aws = aws.ap_south_1 }
+
+  environment               = var.environment
+  region                    = "ap-south-1"
+  backend_ecs_service_name  = module.ecs_service_ap_south_1.backend_ecs_service_name
+  frontend_ecs_service_name = module.ecs_service_ap_south_1.frontend_ecs_service_name
+  alb_arn_suffix            = module.ecs_service_ap_south_1.alb_arn_suffix
 }
