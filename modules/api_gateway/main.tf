@@ -58,7 +58,7 @@ resource "aws_apigatewayv2_stage" "main" {
 # CloudWatch Log Group for API Gateway
 resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/xelta-${var.environment}-${var.region}"
-  retention_in_days = 7
+  retention_in_days = 30 # Increased from 7 to 30 days
 
   tags = {
     Name        = "xelta-${var.environment}-apigw-logs-${var.region}"

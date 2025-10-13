@@ -9,11 +9,10 @@ resource "aws_cloudfront_distribution" "main" {
 
   aliases = [var.domain_name]
 
-  # FIXED: Properly configured origins for API Gateway
   dynamic "origin" {
     for_each = var.origins
     content {
-      domain_name = replace(replace(origin.value, "https://", ""), "http://", "")
+      domain_name = replace(origin.value, "https://", "")
       origin_id   = origin.key
 
       custom_origin_config {
@@ -22,64 +21,18 @@ resource "aws_cloudfront_distribution" "main" {
         origin_protocol_policy = "https-only"
         origin_ssl_protocols   = ["TLSv1.2"]
       }
-
-      custom_header {
-        name  = "X-Custom-Header"
-        value = "xelta-${var.environment}"
-      }
     }
   }
 
-  origin_group {
-    origin_id = "group-us-east-1"
-    failover_criteria {
-      status_codes = [403, 404, 500, 502, 503, 504]
-    }
-    member {
-      origin_id = "us-east-1"
-    }
-    member {
-      origin_id = "eu-central-1"
-    }
-  }
-
-  origin_group {
-    origin_id = "group-eu-central-1"
-    failover_criteria {
-      status_codes = [403, 404, 500, 502, 503, 504]
-    }
-    member {
-      origin_id = "eu-central-1"
-    }
-    member {
-      origin_id = "us-east-1"
-    }
-  }
-
-  origin_group {
-    origin_id = "group-ap-south-1"
-    failover_criteria {
-      status_codes = [403, 404, 500, 502, 503, 504]
-    }
-    member {
-      origin_id = "ap-south-1"
-    }
-    member {
-      origin_id = "us-east-1"
-    }
-  }
-
-  # FIXED: Use single origins instead of origin groups for write methods
-  # Route to primary region (us-east-1) for all requests
+  # Default cache behavior for API calls (no caching)
   default_cache_behavior {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "us-east-1"  # Direct to origin, not origin group
+    target_origin_id = "us-east-1" # Default to primary region
 
     forwarded_values {
       query_string = true
-      headers      = ["*"]  # Forward all headers for API requests
-      
+      headers      = ["*"] # Forward all headers for API requests
       cookies {
         forward = "all"
       }
@@ -87,54 +40,30 @@ resource "aws_cloudfront_distribution" "main" {
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
-    default_ttl            = 0      # Don't cache by default for API
-    max_ttl                = 86400
+    default_ttl            = 0 # Do not cache API responses by default
+    max_ttl                = 0
     compress               = true
   }
 
-  # EU region routing - direct to origin
+  # Cache behavior for static frontend assets (e.g., /static/*)
   ordered_cache_behavior {
-    path_pattern     = "/eu/*"
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    path_pattern     = "/static/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "eu-central-1"  # Direct to origin, not origin group
+    target_origin_id = "us-east-1" # Serve static from primary region
 
     forwarded_values {
-      query_string = true
-      headers      = ["*"]
-      
+      query_string = false
+      headers      = ["Origin"] # Forward only necessary headers
       cookies {
-        forward = "all"
+        forward = "none"
       }
     }
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
-    default_ttl            = 0
-    max_ttl                = 86400
-    compress               = true
-  }
-
-  # AP region routing - direct to origin
-  ordered_cache_behavior {
-    path_pattern     = "/ap/*"
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id = "ap-south-1"  # Direct to origin, not origin group
-
-    forwarded_values {
-      query_string = true
-      headers      = ["*"]
-      
-      cookies {
-        forward = "all"
-      }
-    }
-
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 0
-    max_ttl                = 86400
+    default_ttl            = 86400    # Cache for 1 day
+    max_ttl                = 31536000 # Cache for 1 year
     compress               = true
   }
 

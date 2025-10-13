@@ -4,6 +4,22 @@ data "aws_route53_zone" "main" {
   private_zone = false
 }
 
+# Data sources for dynamic Availability Zones
+data "aws_availability_zones" "us_east_1" {
+  provider = aws.us_east_1
+  state    = "available"
+}
+
+data "aws_availability_zones" "eu_central_1" {
+  provider = aws.eu_central_1
+  state    = "available"
+}
+
+data "aws_availability_zones" "ap_south_1" {
+  provider = aws.ap_south_1
+  state    = "available"
+}
+
 
 # Global secrets (stored in us-east-1, replicated to other regions)
 module "secrets_us_east_1" {
@@ -62,7 +78,7 @@ module "vpc_us_east_1" {
   environment        = var.environment
   region             = "us-east-1"
   vpc_cidr           = var.vpc_cidr_blocks["us-east-1"]
-  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  availability_zones = data.aws_availability_zones.us_east_1.names
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
@@ -131,7 +147,7 @@ module "vpc_eu_central_1" {
   environment        = var.environment
   region             = "eu-central-1"
   vpc_cidr           = var.vpc_cidr_blocks["eu-central-1"]
-  availability_zones = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+  availability_zones = data.aws_availability_zones.eu_central_1.names
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
@@ -186,7 +202,7 @@ module "vpc_ap_south_1" {
   environment        = var.environment
   region             = "ap-south-1"
   vpc_cidr           = var.vpc_cidr_blocks["ap-south-1"]
-  availability_zones = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  availability_zones = data.aws_availability_zones.ap_south_1.names
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
