@@ -1,3 +1,4 @@
+# main.tf
 # Data source for Route53 hosted zone
 data "aws_route53_zone" "main" {
   name         = var.domain_name
@@ -22,9 +23,9 @@ module "waf" {
 }
 
 module "cdn" {
-  source      = "./modules/cdn"
-  environment = var.environment
-  domain_name = var.domain_name
+  source        = "./modules/cdn"
+  environment   = var.environment
+  domain_name   = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
   waf_web_acl_arn = module.waf.waf_arn
 
@@ -123,6 +124,12 @@ module "redis_us_east_1" {
 module "monitoring_us_east_1" {
   source    = "./modules/monitoring"
   providers = { aws = aws.us_east_1 }
+
+  environment               = var.environment
+  region                    = "us-east-1"
+  backend_ecs_service_name  = module.ecs_service_us_east_1.backend_service_name
+  frontend_ecs_service_name = module.ecs_service_us_east_1.frontend_service_name
+  nlb_arn_suffix            = module.ecs_service_us_east_1.nlb_arn_suffix
 }
 
 module "api_gateway_us_east_1" {
@@ -222,6 +229,12 @@ module "redis_eu_central_1" {
 module "monitoring_eu_central_1" {
   source    = "./modules/monitoring"
   providers = { aws = aws.eu_central_1 }
+
+  environment               = var.environment
+  region                    = "eu-central-1"
+  backend_ecs_service_name  = module.ecs_service_eu_central_1.backend_service_name
+  frontend_ecs_service_name = module.ecs_service_eu_central_1.frontend_service_name
+  nlb_arn_suffix            = module.ecs_service_eu_central_1.nlb_arn_suffix
 }
 
 module "api_gateway_eu_central_1" {
@@ -322,6 +335,12 @@ module "redis_ap_south_1" {
 module "monitoring_ap_south_1" {
   source    = "./modules/monitoring"
   providers = { aws = aws.ap_south_1 }
+
+  environment               = var.environment
+  region                    = "ap-south-1"
+  backend_ecs_service_name  = module.ecs_service_ap_south_1.backend_service_name
+  frontend_ecs_service_name = module.ecs_service_ap_south_1.frontend_service_name
+  nlb_arn_suffix            = module.ecs_service_ap_south_1.nlb_arn_suffix
 }
 
 module "api_gateway_ap_south_1" {
