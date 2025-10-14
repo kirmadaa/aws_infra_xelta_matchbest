@@ -23,9 +23,9 @@ module "waf" {
 }
 
 module "cdn" {
-  source        = "./modules/cdn"
-  environment   = var.environment
-  domain_name   = var.domain_name
+  source          = "./modules/cdn"
+  environment     = var.environment
+  domain_name     = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
   waf_web_acl_arn = module.waf.waf_arn
 
@@ -172,6 +172,8 @@ module "route53_acm_eu_central_1" {
   region          = "eu-central-1"
   domain_name     = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
+  cdn_dns_name    = module.cdn.cdn_dns_name
+  cdn_zone_id     = module.cdn.cdn_zone_id
 }
 
 module "sqs_eu_central_1" {
@@ -277,6 +279,8 @@ module "route53_acm_ap_south_1" {
   region          = "ap-south-1"
   domain_name     = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
+  cdn_dns_name    = module.cdn.cdn_dns_name
+  cdn_zone_id     = module.cdn.cdn_zone_id
 }
 
 module "sqs_ap_south_1" {
