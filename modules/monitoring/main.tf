@@ -1,3 +1,5 @@
+# modules/monitoring/main.tf
+
 # CloudWatch dashboard for monitoring
 resource "aws_cloudwatch_dashboard" "performance" {
   dashboard_name = "xelta-${var.environment}-performance"
@@ -14,7 +16,8 @@ resource "aws_cloudwatch_dashboard" "performance" {
             ["AWS/ECS", "MemoryUtilization", "ServiceName", var.backend_ecs_service_name],
             ["AWS/ECS", "CPUUtilization", "ServiceName", var.frontend_ecs_service_name],
             ["AWS/ECS", "MemoryUtilization", "ServiceName", var.frontend_ecs_service_name],
-            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", var.alb_arn_suffix]
+            ["AWS/NetworkELB", "HealthyHostCount", "LoadBalancer", var.nlb_arn_suffix],
+            ["AWS/NetworkELB", "UnHealthyHostCount", "LoadBalancer", var.nlb_arn_suffix]
           ]
           period = 300
           stat   = "Average"
@@ -26,19 +29,19 @@ resource "aws_cloudwatch_dashboard" "performance" {
   })
 }
 
-# Alarms for performance degradation
-resource "aws_cloudwatch_metric_alarm" "high_response_time" {
-  alarm_name          = "xelta-${var.environment}-${var.region}-high-response-time"
-  comparison_operator = "GreaterThanThreshold"
+# Alarms for unhealthy hosts
+resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
+  alarm_name          = "xelta-${var.environment}-${var.region}-unhealthy-hosts"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = "2"
-  metric_name         = "TargetResponseTime"
-  namespace           = "AWS/ApplicationELB"
+  metric_name         = "UnHealthyHostCount"
+  namespace           = "AWS/NetworkELB"
   period              = "120"
-  statistic           = "Average"
-  threshold           = "1.0"  # 1 second threshold
-  alarm_description   = "This metric monitors ALB response time"
+  statistic           = "Maximum"
+  threshold           = "1"
+  alarm_description   = "This metric monitors for unhealthy NLB targets"
 
   dimensions = {
-    LoadBalancer = var.alb_arn_suffix
+    LoadBalancer = var.nlb_arn_suffix
   }
 }
