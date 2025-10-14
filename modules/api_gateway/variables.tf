@@ -31,4 +31,17 @@ variable "ecs_service_arn" {
 variable "nlb_listener_arn" {
   description = "ARN of the NLB listener to integrate with"
   type        = string
+  default     = ""
+}
+
+variable "sqs_queue_url" {
+  description = "URL of the SQS queue for job submission"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_queue_arn" {
+  description = "ARN of the SQS queue for job submission"
+  type        = string
+  default     = ""
 }

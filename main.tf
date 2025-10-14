@@ -151,12 +151,16 @@ module "redis_us_east_1" {
 module "monitoring_us_east_1" {
   source    = "./modules/monitoring"
   providers = { aws = aws.us_east_1 }
+}
 
-  environment               = var.environment
-  region                    = "us-east-1"
-  backend_ecs_service_name  = module.ecs_service_us_east_1.backend_ecs_service_name
-  frontend_ecs_service_name = module.ecs_service_us_east_1.frontend_ecs_service_name
-  alb_arn_suffix            = module.ecs_service_us_east_1.alb_arn_suffix
+module "api_gateway_us_east_1" {
+  source    = "./modules/api_gateway"
+  providers = { aws = aws.us_east_1 }
+
+  environment   = var.environment
+  region        = "us-east-1"
+  sqs_queue_arn = module.sqs_us_east_1.jobs_queue_arn
+  sqs_queue_url = module.sqs_us_east_1.jobs_queue_url
 }
 
 
@@ -230,12 +234,16 @@ module "redis_eu_central_1" {
 module "monitoring_eu_central_1" {
   source    = "./modules/monitoring"
   providers = { aws = aws.eu_central_1 }
+}
 
-  environment               = var.environment
-  region                    = "eu-central-1"
-  backend_ecs_service_name  = module.ecs_service_eu_central_1.backend_ecs_service_name
-  frontend_ecs_service_name = module.ecs_service_eu_central_1.frontend_ecs_service_name
-  alb_arn_suffix            = module.ecs_service_eu_central_1.alb_arn_suffix
+module "api_gateway_eu_central_1" {
+  source    = "./modules/api_gateway"
+  providers = { aws = aws.eu_central_1 }
+
+  environment   = var.environment
+  region        = "eu-central-1"
+  sqs_queue_arn = module.sqs_eu_central_1.jobs_queue_arn
+  sqs_queue_url = module.sqs_eu_central_1.jobs_queue_url
 }
 
 
@@ -310,10 +318,14 @@ module "redis_ap_south_1" {
 module "monitoring_ap_south_1" {
   source    = "./modules/monitoring"
   providers = { aws = aws.ap_south_1 }
+}
 
-  environment               = var.environment
-  region                    = "ap-south-1"
-  backend_ecs_service_name  = module.ecs_service_ap_south_1.backend_ecs_service_name
-  frontend_ecs_service_name = module.ecs_service_ap_south_1.frontend_ecs_service_name
-  alb_arn_suffix            = module.ecs_service_ap_south_1.alb_arn_suffix
+module "api_gateway_ap_south_1" {
+  source    = "./modules/api_gateway"
+  providers = { aws = aws.ap_south_1 }
+
+  environment   = var.environment
+  region        = "ap-south-1"
+  sqs_queue_arn = module.sqs_ap_south_1.jobs_queue_arn
+  sqs_queue_url = module.sqs_ap_south_1.jobs_queue_url
 }

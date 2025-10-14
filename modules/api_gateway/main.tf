@@ -26,11 +26,69 @@ resource "aws_apigatewayv2_integration" "main" {
   timeout_milliseconds = 30000
 }
 
+# IAM Role for API Gateway to SQS
+resource "aws_iam_role" "api_gateway_sqs" {
+  count = var.sqs_queue_arn != "" ? 1 : 0
+  name  = "xelta-${var.environment}-${var.region}-api-gateway-sqs-role"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_gateway_sqs" {
+  count = var.sqs_queue_arn != "" ? 1 : 0
+  name  = "xelta-${var.environment}-${var.region}-api-gateway-sqs-policy"
+  role  = aws_iam_role.api_gateway_sqs[0].id
+
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Action   = "sqs:SendMessage"
+        Effect   = "Allow"
+        Resource = var.sqs_queue_arn
+      }
+    ]
+  })
+}
+
+# API Gateway Integration for SQS
+resource "aws_apigatewayv2_integration" "sqs" {
+  count              = var.sqs_queue_arn != "" ? 1 : 0
+  api_id             = aws_apigatewayv2_api.main.id
+  integration_type   = "AWS_PROXY"
+  integration_subtype = "SQS-SendMessage"
+  credentials_arn    = aws_iam_role.api_gateway_sqs[0].arn
+
+  request_parameters = {
+    "QueueUrl"    = var.sqs_queue_url
+    "MessageBody" = "$request.body"
+  }
+}
+
 # API Gateway Route
 resource "aws_apigatewayv2_route" "main" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+}
+
+# API Gateway Route for SQS
+resource "aws_apigatewayv2_route" "sqs" {
+  count      = var.sqs_queue_arn != "" ? 1 : 0
+  api_id     = aws_apigatewayv2_api.main.id
+  route_key  = "POST /jobs"
+  target     = "integrations/${aws_apigatewayv2_integration.sqs[0].id}"
 }
 
 # API Gateway Stage
