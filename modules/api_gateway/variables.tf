@@ -23,15 +23,14 @@ variable "ecs_service_security_group_id" {
   type        = string
 }
 
-variable "ecs_service_arn" {
-  description = "ARN of the ECS service to integrate with"
+variable "frontend_nlb_listener_arn" {
+  description = "ARN of the NLB listener for the frontend"
   type        = string
 }
 
-variable "nlb_listener_arn" {
-  description = "ARN of the NLB listener to integrate with"
+variable "backend_nlb_listener_arn" {
+  description = "ARN of the NLB listener for the backend"
   type        = string
-  default     = ""
 }
 
 variable "sqs_queue_url" {
@@ -44,4 +43,14 @@ variable "sqs_queue_arn" {
   description = "ARN of the SQS queue for job submission"
   type        = string
   default     = ""
+}
+
+variable "domain_name" {
+  description = "The custom domain name for the API Gateway"
+  type        = string
+}
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for the custom domain"
+  type        = string
 }

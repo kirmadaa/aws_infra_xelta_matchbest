@@ -11,13 +11,20 @@ resource "aws_secretsmanager_secret" "db_credentials" {
   name        = "xelta-${var.environment}-db-credentials"
   description = "Database credentials for xelta ${var.environment}"
 
-  # FIXED: Set recovery window to 0 to allow immediate deletion and recreation
-  recovery_window_in_days = 0
+  # For production, use a recovery window. For dev, 0 is okay.
+  recovery_window_in_days = var.environment == "prod" ? 7 : 0
 
-  # Add lifecycle to prevent accidental deletion in production
+  # Add this block to enable replication
+  dynamic "replica" {
+    for_each = toset(var.replica_regions)
+    content {
+      region = replica.value
+    }
+  }
+
   lifecycle {
-    create_before_destroy = false
-    ignore_changes        = []
+    # This prevents accidental deletion in production
+    prevent_destroy = var.environment == "prod"
   }
 
   tags = {

@@ -97,10 +97,7 @@ variable "frontend_port" {
   type        = number
   default     = 80
 }
-variable "public_subnet_ids" {
-  description = "List of public subnet IDs for the Application Load Balancer"
-  type        = list(string)
-}
+
 variable "redis_endpoint" {
   description = "The endpoint of the Redis cluster"
   type        = string

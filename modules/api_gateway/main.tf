@@ -13,16 +13,27 @@ resource "aws_apigatewayv2_vpc_link" "main" {
   security_group_ids = [var.ecs_service_security_group_id]
 }
 
-# API Gateway Integration
-resource "aws_apigatewayv2_integration" "main" {
+# API Gateway Integration for Frontend
+resource "aws_apigatewayv2_integration" "frontend" {
   api_id             = aws_apigatewayv2_api.main.id
   integration_type   = "HTTP_PROXY"
-  integration_method = "ANY"  # FIXED: Added required integration_method
-  integration_uri    = var.nlb_listener_arn
+  integration_method = "ANY"
+  integration_uri    = var.frontend_nlb_listener_arn
+  connection_type    = "VPC_LINK"
+  connection_id      = aws_apigatewayv2_vpc_link.main.id
+
+  timeout_milliseconds = 30000
+}
+
+# API Gateway Integration for Backend
+resource "aws_apigatewayv2_integration" "backend" {
+  api_id             = aws_apigatewayv2_api.main.id
+  integration_type   = "HTTP_PROXY"
+  integration_method = "ANY"
+  integration_uri    = var.backend_nlb_listener_arn
   connection_type    = "VPC_LINK"
   connection_id      = aws_apigatewayv2_vpc_link.main.id
   
-  # Optional: Add timeout configuration
   timeout_milliseconds = 30000
 }
 
@@ -76,11 +87,18 @@ resource "aws_apigatewayv2_integration" "sqs" {
   }
 }
 
-# API Gateway Route
-resource "aws_apigatewayv2_route" "main" {
+# API Gateway Route for Frontend (Default)
+resource "aws_apigatewayv2_route" "default" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.frontend.id}"
+}
+
+# API Gateway Route for Backend API
+resource "aws_apigatewayv2_route" "backend" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "ANY /api/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.backend.id}"
 }
 
 # API Gateway Route for SQS
@@ -97,7 +115,6 @@ resource "aws_apigatewayv2_stage" "main" {
   name        = "$default"
   auto_deploy = true
   
-  # Optional: Add logging
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway.arn
     format = jsonencode({
@@ -122,4 +139,21 @@ resource "aws_cloudwatch_log_group" "api_gateway" {
     Name        = "xelta-${var.environment}-apigw-logs-${var.region}"
     Environment = var.environment
   }
+}
+
+# Add a custom domain for the API Gateway
+resource "aws_apigatewayv2_domain_name" "main" {
+  domain_name = "api-${var.region}.${var.domain_name}"
+
+  domain_name_configuration {
+    certificate_arn = var.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+}
+
+resource "aws_apigatewayv2_api_mapping" "main" {
+  api_id      = aws_apigatewayv2_api.main.id
+  domain_name = aws_apigatewayv2_domain_name.main.id
+  stage       = aws_apigatewayv2_stage.main.id
 }
