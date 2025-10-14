@@ -52,6 +52,11 @@ variable "frontend_image" {
   type        = string
 }
 
+variable "worker_image" {
+  description = "Docker image for the worker service"
+  type        = string
+}
+
 
 variable "enable_redis" {
   description = "Enable ElastiCache Redis deployment"

@@ -46,6 +46,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "REDIS_ENDPOINT"
           value = var.redis_endpoint
+        },
+        {
+          name  = "SQS_QUEUE_URL"
+          value = var.sqs_queue_url
         }
       ]
 
@@ -117,6 +121,54 @@ resource "aws_ecs_task_definition" "frontend" {
   ])
 }
 
+# Worker Task Definition
+resource "aws_ecs_task_definition" "worker" {
+  family                   = "xelta-${var.environment}-worker"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.backend_cpu # Starting with same size as backend
+  memory                   = var.backend_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "worker"
+      image     = var.worker_image
+      essential = true
+      environment = [
+        { name = "ENVIRONMENT", value = var.environment },
+        { name = "REGION", value = var.region },
+        { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
+        { name = "S3_BUCKET", value = var.s3_outputs_bucket_id }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs.name
+          awslogs-region        = var.region
+          awslogs-stream-prefix = "worker"
+        }
+      }
+    }
+  ])
+}
+
+# ECS Service for Worker
+resource "aws_ecs_service" "worker" {
+  name            = "xelta-${var.environment}-${var.region}-worker"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  launch_type     = "FARGATE"
+  desired_count   = var.min_capacity # Can be scaled independently later
+
+  network_configuration {
+    subnets         = var.private_subnet_ids
+    security_groups = [aws_security_group.ecs_service.id]
+    assign_public_ip = false
+  }
+}
+
 # IAM Role for ECS Task Execution
 resource "aws_iam_role" "ecs_task_execution" {
   name = "xelta-${var.environment}-${var.region}-ecs-task-execution-role"
@@ -130,6 +182,40 @@ resource "aws_iam_role" "ecs_task_execution" {
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
         }
+      }
+    ]
+  })
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy" "job_processing_permissions" {
+  name = "xelta-${var.environment}-${var.region}-job-processing-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "AllowSQSActions",
+        Effect = "Allow",
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ],
+        Resource = var.sqs_queue_arn
+      },
+      {
+        Sid    = "AllowS3OutputActions",
+        Effect = "Allow",
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:PutObjectAcl"
+        ],
+        Resource = "${var.s3_outputs_bucket_arn}/*"
       }
     ]
   })

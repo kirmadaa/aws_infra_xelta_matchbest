@@ -8,6 +8,7 @@ This repository contains the Terraform code to provision a secure, scalable, and
 *   **Private by Default:** All EKS nodes, databases, and cache clusters reside in private subnets with no direct internet access.
 *   **ALB as the Secure Gateway:** The Application Load Balancer (ALB) is the primary entry point for traffic, protected by AWS WAF and CloudFront.
 *   **Infrastructure as Code:** The entire infrastructure is defined using Terraform, enabling consistent and repeatable deployments.
+*   **Asynchronous Job Processing:** A dedicated ECS worker service processes long-running tasks asynchronously using SQS queues and stores outputs in a secure S3 bucket.
 *   **Automation-Ready:** The project includes a GitHub Actions workflow for automated CI/CD.
 
 ## Prerequisites
@@ -24,7 +25,7 @@ Before you begin, ensure you have the following:
 
 The project is organized into two main directories:
 
-*   `terraform/modules`: Contains reusable Terraform modules for different parts of the infrastructure (VPC, EKS, Database, Edge).
+*   `terraform/modules`: Contains reusable Terraform modules for different parts of the infrastructure (VPC, EKS, Database, Edge, SQS, S3 Outputs).
 *   `terraform/environments`: Contains the root configurations for each environment (`dev`, `prod`). Each environment is configured for a specific AWS region.
 *   `kubernetes-examples`: Contains example Kubernetes manifests, such as the `secure-ingress.yaml` file.
 
@@ -62,6 +63,7 @@ Now, edit `terraform.tfvars` and fill in the required values:
 
 *   `domain_name`: The full domain name for the environment (e.g., `dev.xelta.com`).
 *   `parent_zone_id`: The **Hosted Zone ID** of your root domain in Route 53 (e.g., the zone ID for `xelta.com`).
+*   `backend_image`, `frontend_image`, `worker_image`: The Docker image URIs for the respective services.
 
 All other variables are pre-configured with sensible defaults for their respective environments, but you can adjust them as needed.
 

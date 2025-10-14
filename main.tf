@@ -66,6 +66,20 @@ module "vpc_us_east_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
+module "sqs_us_east_1" {
+  source    = "./modules/sqs"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+}
+
+module "s3_outputs_us_east_1" {
+  source    = "./modules/s3_outputs"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+}
+
 module "ecs_service_us_east_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.us_east_1 }
@@ -79,7 +93,13 @@ module "ecs_service_us_east_1" {
 
   backend_image       = var.backend_image
   frontend_image      = var.frontend_image
+  worker_image        = var.worker_image
   redis_endpoint      = var.enable_redis ? module.redis_us_east_1[0].redis_endpoint : ""
+
+  sqs_queue_arn         = module.sqs_us_east_1.jobs_queue_arn
+  sqs_queue_url         = module.sqs_us_east_1.jobs_queue_url
+  s3_outputs_bucket_arn = module.s3_outputs_us_east_1.bucket_arn
+  s3_outputs_bucket_id  = module.s3_outputs_us_east_1.bucket_id
 }
 
 module "route53_acm_us_east_1" {
@@ -154,6 +174,20 @@ module "vpc_eu_central_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
+module "sqs_eu_central_1" {
+  source    = "./modules/sqs"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+}
+
+module "s3_outputs_eu_central_1" {
+  source    = "./modules/s3_outputs"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+}
+
 module "ecs_service_eu_central_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.eu_central_1 }
@@ -167,7 +201,13 @@ module "ecs_service_eu_central_1" {
 
   backend_image       = var.backend_image
   frontend_image      = var.frontend_image
+  worker_image        = var.worker_image
   redis_endpoint      = var.enable_redis ? module.redis_eu_central_1[0].redis_endpoint : ""
+
+  sqs_queue_arn         = module.sqs_eu_central_1.jobs_queue_arn
+  sqs_queue_url         = module.sqs_eu_central_1.jobs_queue_url
+  s3_outputs_bucket_arn = module.s3_outputs_eu_central_1.bucket_arn
+  s3_outputs_bucket_id  = module.s3_outputs_eu_central_1.bucket_id
 }
 
 module "redis_eu_central_1" {
@@ -213,6 +253,20 @@ module "vpc_ap_south_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
+module "sqs_ap_south_1" {
+  source    = "./modules/sqs"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
+}
+
+module "s3_outputs_ap_south_1" {
+  source    = "./modules/s3_outputs"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
+}
+
 module "ecs_service_ap_south_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.ap_south_1 }
@@ -226,7 +280,13 @@ module "ecs_service_ap_south_1" {
 
   backend_image       = var.backend_image
   frontend_image      = var.frontend_image
+  worker_image        = var.worker_image
   redis_endpoint      = var.enable_redis ? module.redis_ap_south_1[0].redis_endpoint : ""
+
+  sqs_queue_arn         = module.sqs_ap_south_1.jobs_queue_arn
+  sqs_queue_url         = module.sqs_ap_south_1.jobs_queue_url
+  s3_outputs_bucket_arn = module.s3_outputs_ap_south_1.bucket_arn
+  s3_outputs_bucket_id  = module.s3_outputs_ap_south_1.bucket_id
 }
 
 module "redis_ap_south_1" {

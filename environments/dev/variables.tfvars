@@ -5,6 +5,7 @@ domain_name = "xelta.ai"
 # Replace these with your actual Docker image URIs
 #backend_image  = "your-registry/your-backend-app:latest"
 #frontend_image = "your-registry/your-frontend-app:latest"
+worker_image = "your-registry/your-worker-app:latest"
 
 # Multi-region deployment
 regions = ["us-east-1", "eu-central-1", "ap-south-1"]

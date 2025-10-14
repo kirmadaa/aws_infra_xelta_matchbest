@@ -57,6 +57,11 @@ variable "frontend_image" {
   type        = string
 }
 
+variable "worker_image" {
+  description = "Docker image for the worker service"
+  type        = string
+}
+
 variable "backend_cpu" {
   description = "CPU units for the backend task"
   type        = number
@@ -100,4 +105,24 @@ variable "redis_endpoint" {
   description = "The endpoint of the Redis cluster"
   type        = string
   default     = ""
+}
+
+variable "sqs_queue_arn" {
+  description = "ARN of the SQS queue for jobs"
+  type        = string
+}
+
+variable "sqs_queue_url" {
+  description = "URL of the SQS queue for jobs"
+  type        = string
+}
+
+variable "s3_outputs_bucket_arn" {
+  description = "ARN of the S3 bucket for job outputs"
+  type        = string
+}
+
+variable "s3_outputs_bucket_id" {
+  description = "ID of the S3 bucket for job outputs"
+  type        = string
 }
