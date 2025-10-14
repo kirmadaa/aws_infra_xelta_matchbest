@@ -1,3 +1,4 @@
+# main.tf
 # Data source for Route53 hosted zone
 data "aws_route53_zone" "main" {
   name         = var.domain_name
@@ -10,21 +11,9 @@ module "secrets_us_east_1" {
   source    = "./modules/secrets"
   providers = { aws = aws.us_east_1 }
 
-  environment = var.environment
-}
-
-module "secrets_eu_central_1" {
-  source    = "./modules/secrets"
-  providers = { aws = aws.eu_central_1 }
-
-  environment = var.environment
-}
-
-module "secrets_ap_south_1" {
-  source    = "./modules/secrets"
-  providers = { aws = aws.ap_south_1 }
-
-  environment = var.environment
+  environment     = var.environment
+  # Replicate the secret to the other two regions
+  replica_regions = ["eu-central-1", "ap-south-1"]
 }
 
 # WAF & CDN (Global resources)
@@ -34,17 +23,17 @@ module "waf" {
 }
 
 module "cdn" {
-  source      = "./modules/cdn"
-  environment = var.environment
-  domain_name = var.domain_name
+  source        = "./modules/cdn"
+  environment   = var.environment
+  domain_name   = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
   waf_web_acl_arn = module.waf.waf_arn
 
-  # Origin info for each regional ALB
+  # Origin info for each regional API Gateway
   origins = {
-    us-east-1    = module.ecs_service_us_east_1.alb_dns_name
-    eu-central-1 = module.ecs_service_eu_central_1.alb_dns_name
-    ap-south-1   = module.ecs_service_ap_south_1.alb_dns_name
+    us-east-1    = module.api_gateway_us_east_1.api_gateway_domain_name
+    eu-central-1 = module.api_gateway_eu_central_1.api_gateway_domain_name
+    ap-south-1   = module.api_gateway_ap_south_1.api_gateway_domain_name
   }
 
   # ACM certificate for the CDN (must be in us-east-1)
@@ -66,6 +55,20 @@ module "vpc_us_east_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
+module "sqs_us_east_1" {
+  source    = "./modules/sqs"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+}
+
+module "s3_outputs_us_east_1" {
+  source    = "./modules/s3_outputs"
+  providers = { aws = aws.us_east_1 }
+
+  environment = var.environment
+}
+
 module "ecs_service_us_east_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.us_east_1 }
@@ -75,11 +78,16 @@ module "ecs_service_us_east_1" {
   vpc_id              = module.vpc_us_east_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["us-east-1"]
   private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
-  public_subnet_ids   = module.vpc_us_east_1.public_subnet_ids
 
   backend_image       = var.backend_image
   frontend_image      = var.frontend_image
+  worker_image        = var.worker_image
   redis_endpoint      = var.enable_redis ? module.redis_us_east_1[0].redis_endpoint : ""
+
+  sqs_queue_arn         = module.sqs_us_east_1.jobs_queue_arn
+  sqs_queue_url         = module.sqs_us_east_1.jobs_queue_url
+  s3_outputs_bucket_arn = module.s3_outputs_us_east_1.bucket_arn
+  s3_outputs_bucket_id  = module.s3_outputs_us_east_1.bucket_id
 }
 
 module "route53_acm_us_east_1" {
@@ -94,21 +102,6 @@ module "route53_acm_us_east_1" {
   # Create Route53 record for the CDN
   cdn_dns_name    = module.cdn.cdn_dns_name
   cdn_zone_id     = module.cdn.cdn_zone_id
-
-  regional_alb_endpoints = {
-    us-east-1 = {
-      dns_name = module.ecs_service_us_east_1.alb_dns_name
-      zone_id  = module.ecs_service_us_east_1.alb_zone_id
-    }
-    eu-central-1 = {
-      dns_name = module.ecs_service_eu_central_1.alb_dns_name
-      zone_id  = module.ecs_service_eu_central_1.alb_zone_id
-    }
-    ap-south-1 = {
-      dns_name = module.ecs_service_ap_south_1.alb_dns_name
-      zone_id  = module.ecs_service_ap_south_1.alb_zone_id
-    }
-  }
 }
 
 module "redis_us_east_1" {
@@ -134,9 +127,26 @@ module "monitoring_us_east_1" {
 
   environment               = var.environment
   region                    = "us-east-1"
-  backend_ecs_service_name  = module.ecs_service_us_east_1.backend_ecs_service_name
-  frontend_ecs_service_name = module.ecs_service_us_east_1.frontend_ecs_service_name
-  alb_arn_suffix            = module.ecs_service_us_east_1.alb_arn_suffix
+  backend_ecs_service_name  = module.ecs_service_us_east_1.backend_service_name
+  frontend_ecs_service_name = module.ecs_service_us_east_1.frontend_service_name
+  nlb_arn_suffix            = module.ecs_service_us_east_1.nlb_arn_suffix
+}
+
+module "api_gateway_us_east_1" {
+  source    = "./modules/api_gateway"
+  providers = { aws = aws.us_east_1 }
+
+  environment                   = var.environment
+  region                        = "us-east-1"
+  domain_name                   = var.domain_name
+  certificate_arn               = module.route53_acm_us_east_1.certificate_arn
+  vpc_id                        = module.vpc_us_east_1.vpc_id
+  private_subnet_ids            = module.vpc_us_east_1.private_subnet_ids
+  ecs_service_security_group_id = module.ecs_service_us_east_1.service_security_group_id
+  frontend_nlb_listener_arn     = module.ecs_service_us_east_1.frontend_nlb_listener_arn
+  backend_nlb_listener_arn      = module.ecs_service_us_east_1.backend_nlb_listener_arn
+  sqs_queue_arn                 = module.sqs_us_east_1.jobs_queue_arn
+  sqs_queue_url                 = module.sqs_us_east_1.jobs_queue_url
 }
 
 
@@ -154,6 +164,30 @@ module "vpc_eu_central_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
+module "route53_acm_eu_central_1" {
+  source    = "./modules/route53_acm"
+  providers = { aws = aws.eu_central_1 }
+
+  environment     = var.environment
+  region          = "eu-central-1"
+  domain_name     = var.domain_name
+  route53_zone_id = data.aws_route53_zone.main.zone_id
+}
+
+module "sqs_eu_central_1" {
+  source    = "./modules/sqs"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+}
+
+module "s3_outputs_eu_central_1" {
+  source    = "./modules/s3_outputs"
+  providers = { aws = aws.eu_central_1 }
+
+  environment = var.environment
+}
+
 module "ecs_service_eu_central_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.eu_central_1 }
@@ -163,11 +197,16 @@ module "ecs_service_eu_central_1" {
   vpc_id              = module.vpc_eu_central_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
-  public_subnet_ids   = module.vpc_eu_central_1.public_subnet_ids
 
   backend_image       = var.backend_image
   frontend_image      = var.frontend_image
+  worker_image        = var.worker_image
   redis_endpoint      = var.enable_redis ? module.redis_eu_central_1[0].redis_endpoint : ""
+
+  sqs_queue_arn         = module.sqs_eu_central_1.jobs_queue_arn
+  sqs_queue_url         = module.sqs_eu_central_1.jobs_queue_url
+  s3_outputs_bucket_arn = module.s3_outputs_eu_central_1.bucket_arn
+  s3_outputs_bucket_id  = module.s3_outputs_eu_central_1.bucket_id
 }
 
 module "redis_eu_central_1" {
@@ -193,9 +232,26 @@ module "monitoring_eu_central_1" {
 
   environment               = var.environment
   region                    = "eu-central-1"
-  backend_ecs_service_name  = module.ecs_service_eu_central_1.backend_ecs_service_name
-  frontend_ecs_service_name = module.ecs_service_eu_central_1.frontend_ecs_service_name
-  alb_arn_suffix            = module.ecs_service_eu_central_1.alb_arn_suffix
+  backend_ecs_service_name  = module.ecs_service_eu_central_1.backend_service_name
+  frontend_ecs_service_name = module.ecs_service_eu_central_1.frontend_service_name
+  nlb_arn_suffix            = module.ecs_service_eu_central_1.nlb_arn_suffix
+}
+
+module "api_gateway_eu_central_1" {
+  source    = "./modules/api_gateway"
+  providers = { aws = aws.eu_central_1 }
+
+  environment   = var.environment
+  region        = "eu-central-1"
+  domain_name   = var.domain_name
+  certificate_arn = module.route53_acm_eu_central_1.certificate_arn
+  vpc_id                        = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids            = module.vpc_eu_central_1.private_subnet_ids
+  ecs_service_security_group_id = module.ecs_service_eu_central_1.service_security_group_id
+  frontend_nlb_listener_arn     = module.ecs_service_eu_central_1.frontend_nlb_listener_arn
+  backend_nlb_listener_arn      = module.ecs_service_eu_central_1.backend_nlb_listener_arn
+  sqs_queue_arn = module.sqs_eu_central_1.jobs_queue_arn
+  sqs_queue_url = module.sqs_eu_central_1.jobs_queue_url
 }
 
 
@@ -213,6 +269,30 @@ module "vpc_ap_south_1" {
   single_nat_gateway = var.environment == "dev" ? true : false
 }
 
+module "route53_acm_ap_south_1" {
+  source    = "./modules/route53_acm"
+  providers = { aws = aws.ap_south_1 }
+
+  environment     = var.environment
+  region          = "ap-south-1"
+  domain_name     = var.domain_name
+  route53_zone_id = data.aws_route53_zone.main.zone_id
+}
+
+module "sqs_ap_south_1" {
+  source    = "./modules/sqs"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
+}
+
+module "s3_outputs_ap_south_1" {
+  source    = "./modules/s3_outputs"
+  providers = { aws = aws.ap_south_1 }
+
+  environment = var.environment
+}
+
 module "ecs_service_ap_south_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.ap_south_1 }
@@ -222,11 +302,16 @@ module "ecs_service_ap_south_1" {
   vpc_id              = module.vpc_ap_south_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["ap-south-1"]
   private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
-  public_subnet_ids   = module.vpc_ap_south_1.public_subnet_ids
 
   backend_image       = var.backend_image
   frontend_image      = var.frontend_image
+  worker_image        = var.worker_image
   redis_endpoint      = var.enable_redis ? module.redis_ap_south_1[0].redis_endpoint : ""
+
+  sqs_queue_arn         = module.sqs_ap_south_1.jobs_queue_arn
+  sqs_queue_url         = module.sqs_ap_south_1.jobs_queue_url
+  s3_outputs_bucket_arn = module.s3_outputs_ap_south_1.bucket_arn
+  s3_outputs_bucket_id  = module.s3_outputs_ap_south_1.bucket_id
 }
 
 module "redis_ap_south_1" {
@@ -253,7 +338,24 @@ module "monitoring_ap_south_1" {
 
   environment               = var.environment
   region                    = "ap-south-1"
-  backend_ecs_service_name  = module.ecs_service_ap_south_1.backend_ecs_service_name
-  frontend_ecs_service_name = module.ecs_service_ap_south_1.frontend_ecs_service_name
-  alb_arn_suffix            = module.ecs_service_ap_south_1.alb_arn_suffix
+  backend_ecs_service_name  = module.ecs_service_ap_south_1.backend_service_name
+  frontend_ecs_service_name = module.ecs_service_ap_south_1.frontend_service_name
+  nlb_arn_suffix            = module.ecs_service_ap_south_1.nlb_arn_suffix
+}
+
+module "api_gateway_ap_south_1" {
+  source    = "./modules/api_gateway"
+  providers = { aws = aws.ap_south_1 }
+
+  environment   = var.environment
+  region        = "ap-south-1"
+  domain_name   = var.domain_name
+  certificate_arn = module.route53_acm_ap_south_1.certificate_arn
+  vpc_id                        = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids            = module.vpc_ap_south_1.private_subnet_ids
+  ecs_service_security_group_id = module.ecs_service_ap_south_1.service_security_group_id
+  frontend_nlb_listener_arn     = module.ecs_service_ap_south_1.frontend_nlb_listener_arn
+  backend_nlb_listener_arn      = module.ecs_service_ap_south_1.backend_nlb_listener_arn
+  sqs_queue_arn = module.sqs_ap_south_1.jobs_queue_arn
+  sqs_queue_url = module.sqs_ap_south_1.jobs_queue_url
 }
