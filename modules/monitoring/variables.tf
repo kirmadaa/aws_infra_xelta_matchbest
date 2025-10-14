@@ -1,3 +1,5 @@
+# modules/monitoring/variables.tf
+
 variable "environment" {
   description = "Environment name (e.g., 'dev', 'uat', 'prod')"
   type        = string
@@ -18,7 +20,7 @@ variable "frontend_ecs_service_name" {
   type        = string
 }
 
-variable "alb_arn_suffix" {
-  description = "ARN suffix of the Application Load Balancer"
+variable "nlb_arn_suffix" {
+  description = "ARN suffix of the Network Load Balancer"
   type        = string
 }
