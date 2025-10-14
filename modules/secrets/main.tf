@@ -22,11 +22,6 @@ resource "aws_secretsmanager_secret" "db_credentials" {
     }
   }
 
-  lifecycle {
-    # This prevents accidental deletion in production
-    prevent_destroy = var.environment == "prod"
-  }
-
   tags = {
     Name        = "xelta-${var.environment}-db-credentials"
     Environment = var.environment
