@@ -84,20 +84,39 @@ if [[ "$CONFIRM" == "yes" ]]; then
   echo "=========================================="
   echo ""
 
-  # Display correct outputs for the developers
-  echo "Application Endpoint:"
+  # Display all necessary outputs for the developers
+  echo "--- Developer Endpoints & Resources ---"
+  echo ""
+  echo "Global Application Endpoint (Primary):"
   echo "  CloudFront Domain: $(terraform output -raw cdn_domain_name)"
   echo ""
 
-  echo "Regional Redis Endpoints:"
+  echo "Regional API Gateway Endpoints (For testing or region-specific tasks):"
+  echo "  us-east-1:    $(terraform output -raw api_gateway_endpoint_us_east_1)"
+  echo "  eu-central-1: $(terraform output -raw api_gateway_endpoint_eu_central_1)"
+  echo "  ap-south-1:   $(terraform output -raw api_gateway_endpoint_ap_south_1)"
+  echo ""
+
+  echo "Regional SQS Queue URLs (For asynchronous jobs):"
+  echo "  us-east-1:    $(terraform output -raw sqs_queue_url_us_east_1)"
+  echo "  eu-central-1: $(terraform output -raw sqs_queue_url_eu_central_1)"
+  echo "  ap-south-1:   $(terraform output -raw sqs_queue_url_ap_south_1)"
+  echo ""
+
+  echo "Regional Redis Endpoints (For caching):"
   echo "  us-east-1:    $(terraform output -raw redis_endpoint_us_east_1)"
   echo "  eu-central-1: $(terraform output -raw redis_endpoint_eu_central_1)"
   echo "  ap-south-1:   $(terraform output -raw redis_endpoint_ap_south_1)"
   echo ""
 
-  echo "Next steps:"
-  echo "1. Provide the CloudFront Domain and Redis Endpoints to the development team."
-  echo "2. Ensure developers know the naming convention for secrets in AWS Secrets Manager (e.g., xelta-$ENVIRONMENT-db-credentials)."
+  echo "Secrets & S3 Buckets:"
+  echo "  - DB credentials are in AWS Secrets Manager: 'xelta-$ENVIRONMENT-db-credentials'"
+  echo "  - Job outputs S3 bucket name: 'xelta-outputs-$ENVIRONMENT'"
+  echo ""
+
+  echo "--- Next Steps ---"
+  echo "1. Share the above endpoints and resource names with the development team."
+  echo "2. Ensure applications are configured to use the AWS SDK to fetch secrets at runtime."
   echo "3. Verify application health through the CloudFront domain."
   echo ""
 else
