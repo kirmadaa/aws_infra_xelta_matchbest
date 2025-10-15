@@ -84,22 +84,21 @@ if [[ "$CONFIRM" == "yes" ]]; then
   echo "=========================================="
   echo ""
 
-  # Display outputs
-  echo "Cluster configuration commands:"
-  terraform output -raw kubectl_config_commands
+  # Display correct outputs for the developers
+  echo "Application Endpoint:"
+  echo "  CloudFront Domain: $(terraform output -raw cdn_domain_name)"
   echo ""
 
-  echo "ALB Endpoints:"
-  echo "  us-east-1:    $(terraform output -raw alb_dns_us_east_1)"
-  echo "  eu-central-1: $(terraform output -raw alb_dns_eu_central_1)"
-  echo "  ap-south-1:   $(terraform output -raw alb_dns_ap_south_1)"
+  echo "Regional Redis Endpoints:"
+  echo "  us-east-1:    $(terraform output -raw redis_endpoint_us_east_1)"
+  echo "  eu-central-1: $(terraform output -raw redis_endpoint_eu_central_1)"
+  echo "  ap-south-1:   $(terraform output -raw redis_endpoint_ap_south_1)"
   echo ""
 
   echo "Next steps:"
-  echo "1. Configure kubectl using the commands above"
-  echo "2. Install AWS Load Balancer Controller in each cluster"
-  echo "3. Deploy application manifests"
-  echo "4. Verify Route53 DNS propagation (may take 5-10 minutes)"
+  echo "1. Provide the CloudFront Domain and Redis Endpoints to the development team."
+  echo "2. Ensure developers know the naming convention for secrets in AWS Secrets Manager (e.g., xelta-$ENVIRONMENT-db-credentials)."
+  echo "3. Verify application health through the CloudFront domain."
   echo ""
 else
   echo "Deployment cancelled."
