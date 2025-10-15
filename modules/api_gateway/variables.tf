@@ -54,3 +54,9 @@ variable "certificate_arn" {
   description = "ARN of the ACM certificate for the custom domain"
   type        = string
 }
+
+variable "enable_sqs_integration" {
+  description = "Enable the SQS integration for the API Gateway"
+  type        = bool
+  default     = false
+}

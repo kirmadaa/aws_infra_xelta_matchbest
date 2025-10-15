@@ -147,6 +147,7 @@ module "api_gateway_us_east_1" {
   backend_nlb_listener_arn      = module.ecs_service_us_east_1.backend_nlb_listener_arn
   sqs_queue_arn                 = module.sqs_us_east_1.jobs_queue_arn
   sqs_queue_url                 = module.sqs_us_east_1.jobs_queue_url
+  enable_sqs_integration        = true
 }
 
 
@@ -254,6 +255,7 @@ module "api_gateway_eu_central_1" {
   backend_nlb_listener_arn      = module.ecs_service_eu_central_1.backend_nlb_listener_arn
   sqs_queue_arn = module.sqs_eu_central_1.jobs_queue_arn
   sqs_queue_url = module.sqs_eu_central_1.jobs_queue_url
+  enable_sqs_integration        = true
 }
 
 
@@ -362,4 +364,5 @@ module "api_gateway_ap_south_1" {
   backend_nlb_listener_arn      = module.ecs_service_ap_south_1.backend_nlb_listener_arn
   sqs_queue_arn = module.sqs_ap_south_1.jobs_queue_arn
   sqs_queue_url = module.sqs_ap_south_1.jobs_queue_url
+  enable_sqs_integration        = true
 }

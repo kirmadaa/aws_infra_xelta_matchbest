@@ -39,7 +39,7 @@ resource "aws_apigatewayv2_integration" "backend" {
 
 # IAM Role for API Gateway to SQS
 resource "aws_iam_role" "api_gateway_sqs" {
-  count = var.sqs_queue_arn != "" ? 1 : 0
+  count = var.enable_sqs_integration ? 1 : 0
   name  = "xelta-${var.environment}-${var.region}-api-gateway-sqs-role"
 
   assume_role_policy = jsonencode({
@@ -57,7 +57,7 @@ resource "aws_iam_role" "api_gateway_sqs" {
 }
 
 resource "aws_iam_role_policy" "api_gateway_sqs" {
-  count = var.sqs_queue_arn != "" ? 1 : 0
+  count = var.enable_sqs_integration ? 1 : 0
   name  = "xelta-${var.environment}-${var.region}-api-gateway-sqs-policy"
   role  = aws_iam_role.api_gateway_sqs[0].id
 
@@ -75,7 +75,7 @@ resource "aws_iam_role_policy" "api_gateway_sqs" {
 
 # API Gateway Integration for SQS
 resource "aws_apigatewayv2_integration" "sqs" {
-  count              = var.sqs_queue_arn != "" ? 1 : 0
+  count              = var.enable_sqs_integration ? 1 : 0
   api_id             = aws_apigatewayv2_api.main.id
   integration_type   = "AWS_PROXY"
   integration_subtype = "SQS-SendMessage"
@@ -103,7 +103,7 @@ resource "aws_apigatewayv2_route" "backend" {
 
 # API Gateway Route for SQS
 resource "aws_apigatewayv2_route" "sqs" {
-  count      = var.sqs_queue_arn != "" ? 1 : 0
+  count      = var.enable_sqs_integration ? 1 : 0
   api_id     = aws_apigatewayv2_api.main.id
   route_key  = "POST /jobs"
   target     = "integrations/${aws_apigatewayv2_integration.sqs[0].id}"
