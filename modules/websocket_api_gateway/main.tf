@@ -49,32 +49,16 @@ resource "aws_iam_role" "api_gateway_logging" {
   })
 }
 
-resource "aws_iam_role_policy" "api_gateway_logging" {
-  name = "xelta-websocket-${var.environment}-${var.region}-logging-policy"
-  role = aws_iam_role.api_gateway_logging.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams",
-        "logs:PutLogEvents",
-        "logs:GetLogEvents",
-        "logs:FilterLogEvents"
-      ]
-      Effect   = "Allow"
-      Resource = "${aws_cloudwatch_log_group.api_gateway.arn}:*"
-    }]
-  })
+# Attach the AWS managed policy for API Gateway CloudWatch logging
+resource "aws_iam_role_policy_attachment" "api_gateway_logging" {
+  role       = aws_iam_role.api_gateway_logging.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
 resource "aws_api_gateway_account" "main" {
   cloudwatch_role_arn = aws_iam_role.api_gateway_logging.arn
 
-  depends_on = [aws_iam_role_policy.api_gateway_logging]
+  depends_on = [aws_iam_role_policy_attachment.api_gateway_logging]
 }
 
 # WebSocket Routes
@@ -127,6 +111,8 @@ resource "aws_apigatewayv2_stage" "main" {
       connectionId   = "$context.connectionId"
     })
   }
+
+  depends_on = [aws_api_gateway_account.main]
 }
 
 # CloudWatch Log Group for API Gateway
