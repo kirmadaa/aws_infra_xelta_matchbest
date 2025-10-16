@@ -42,6 +42,18 @@ variable "redis_num_cache_nodes" {
   default     = 1
 }
 
+variable "enable_websocket_api" {
+  description = "Enable WebSocket API Gateway deployment"
+  type        = bool
+  default     = true
+}
+
+variable "websocket_connection_timeout_minutes" {
+  description = "WebSocket idle connection timeout in minutes (max 10)"
+  type        = number
+  default     = 10
+}
+
 variable "enable_redis" {
   description = "Enable ElastiCache Redis deployment"
   type        = bool
