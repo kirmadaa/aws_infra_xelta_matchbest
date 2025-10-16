@@ -15,5 +15,5 @@ output "nlb_listener_arn" {
 
 output "nlb_arn" {
   description = "ARN of the NLB"
-  value       = aws_lb.main.arn
+  value       = aws_lb.nlb.arn
 }
