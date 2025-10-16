@@ -47,3 +47,9 @@ variable "enable_redis" {
   type        = bool
   default     = true
 }
+
+variable "enable_websocket_api" {
+  description = "Enable WebSocket API Gateway deployment"
+  type        = bool
+  default     = true
+}
