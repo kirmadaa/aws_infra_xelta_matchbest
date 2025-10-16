@@ -73,6 +73,8 @@ resource "aws_iam_role_policy" "api_gateway_logging" {
 
 resource "aws_api_gateway_account" "main" {
   cloudwatch_role_arn = aws_iam_role.api_gateway_logging.arn
+
+  depends_on = [aws_iam_role_policy.api_gateway_logging]
 }
 
 # WebSocket Routes
