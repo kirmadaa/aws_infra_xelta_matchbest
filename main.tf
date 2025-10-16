@@ -125,12 +125,11 @@ module "websocket_api_gateway_us_east_1" {
   source    = "./modules/websocket_api_gateway"
   providers = { aws = aws.us_east_1 }
 
-  environment                      = var.environment
-  region                           = "us-east-1"
-  vpc_id                           = module.vpc_us_east_1.vpc_id
-  private_subnet_ids               = module.vpc_us_east_1.private_subnet_ids
-  ecs_service_security_group_id    = module.ecs_service_us_east_1.service_security_group_id
-  nlb_listener_arn                 = module.ecs_service_us_east_1.nlb_listener_arn
+  environment      = var.environment
+  region           = "us-east-1"
+  vpc_id           = module.vpc_us_east_1.vpc_id
+  nlb_arn          = module.ecs_service_us_east_1.nlb_arn
+  nlb_listener_arn = module.ecs_service_us_east_1.nlb_listener_arn
 }
 
 
@@ -193,12 +192,11 @@ module "websocket_api_gateway_eu_central_1" {
   source    = "./modules/websocket_api_gateway"
   providers = { aws = aws.eu_central_1 }
 
-  environment                      = var.environment
-  region                           = "eu-central-1"
-  vpc_id                           = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids               = module.vpc_eu_central_1.private_subnet_ids
-  ecs_service_security_group_id    = module.ecs_service_eu_central_1.service_security_group_id
-  nlb_listener_arn                 = module.ecs_service_eu_central_1.nlb_listener_arn
+  environment      = var.environment
+  region           = "eu-central-1"
+  vpc_id           = module.vpc_eu_central_1.vpc_id
+  nlb_arn          = module.ecs_service_eu_central_1.nlb_arn
+  nlb_listener_arn = module.ecs_service_eu_central_1.nlb_listener_arn
 }
 
 
@@ -261,10 +259,9 @@ module "websocket_api_gateway_ap_south_1" {
   source    = "./modules/websocket_api_gateway"
   providers = { aws = aws.ap_south_1 }
 
-  environment                      = var.environment
-  region                           = "ap-south-1"
-  vpc_id                           = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids               = module.vpc_ap_south_1.private_subnet_ids
-  ecs_service_security_group_id    = module.ecs_service_ap_south_1.service_security_group_id
-  nlb_listener_arn                 = module.ecs_service_ap_south_1.nlb_listener_arn
+  environment      = var.environment
+  region           = "ap-south-1"
+  vpc_id           = module.vpc_ap_south_1.vpc_id
+  nlb_arn          = module.ecs_service_ap_south_1.nlb_arn
+  nlb_listener_arn = module.ecs_service_ap_south_1.nlb_listener_arn
 }

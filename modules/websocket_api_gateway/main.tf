@@ -13,10 +13,9 @@ resource "aws_apigatewayv2_api" "main" {
 }
 
 # VPC Link for API Gateway to connect to private resources
-resource "aws_apigatewayv2_vpc_link" "main" {
-  name               = "xelta-websocket-${var.environment}-${var.region}-v2"
-  subnet_ids         = var.private_subnet_ids
-  security_group_ids = [var.ecs_service_security_group_id]
+resource "aws_api_gateway_vpc_link" "main" {
+  name        = "xelta-websocket-${var.environment}-${var.region}-v1"
+  target_arns = [var.nlb_arn]
 
   tags = {
     Name        = "xelta-websocket-${var.environment}-vpclink-${var.region}"
@@ -31,7 +30,7 @@ resource "aws_apigatewayv2_integration" "main" {
   integration_method = "ANY"
   integration_uri    = var.nlb_listener_arn
   connection_type    = "VPC_LINK"
-  connection_id      = aws_apigatewayv2_vpc_link.main.id
+  connection_id      = aws_api_gateway_vpc_link.main.id
 }
 
 # IAM Role for API Gateway to write to CloudWatch Logs
@@ -70,6 +69,10 @@ resource "aws_iam_role_policy" "api_gateway_logging" {
       Resource = "${aws_cloudwatch_log_group.api_gateway.arn}:*"
     }]
   })
+}
+
+resource "aws_api_gateway_account" "main" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_logging.arn
 }
 
 # WebSocket Routes

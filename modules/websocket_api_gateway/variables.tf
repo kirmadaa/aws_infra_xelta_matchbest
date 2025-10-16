@@ -15,13 +15,8 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "private_subnet_ids" {
-  description = "A list of private subnet IDs for the VPC Link"
-  type        = list(string)
-}
-
-variable "ecs_service_security_group_id" {
-  description = "The security group ID for the ECS service to allow traffic from the VPC Link"
+variable "nlb_arn" {
+  description = "The ARN of the Network Load Balancer to integrate with"
   type        = string
 }
 
