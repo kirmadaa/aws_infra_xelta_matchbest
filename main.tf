@@ -75,6 +75,8 @@ module "ecs_service_us_east_1" {
   vpc_id              = module.vpc_us_east_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["us-east-1"]
   private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
+  frontend_image      = var.frontend_image
+  backend_image       = var.backend_image
 }
 
 module "api_gateway_us_east_1" {
@@ -86,8 +88,7 @@ module "api_gateway_us_east_1" {
   vpc_id                        = module.vpc_us_east_1.vpc_id
   private_subnet_ids            = module.vpc_us_east_1.private_subnet_ids
   ecs_service_security_group_id = module.ecs_service_us_east_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_us_east_1.service_arn
-  nlb_listener_arn              = module.ecs_service_us_east_1.nlb_listener_arn
+  nlb_listener_arn              = module.ecs_service_us_east_1.frontend_nlb_listener_arn
 }
 
 module "route53_acm_us_east_1" {
@@ -129,7 +130,7 @@ module "websocket_api_gateway_us_east_1" {
   region           = "us-east-1"
   vpc_id           = module.vpc_us_east_1.vpc_id
   nlb_arn          = module.ecs_service_us_east_1.nlb_arn
-  nlb_listener_arn = module.ecs_service_us_east_1.nlb_listener_arn
+  nlb_listener_arn = module.ecs_service_us_east_1.backend_nlb_listener_arn # Assuming WebSocket API is for the backend
 }
 
 
@@ -156,6 +157,8 @@ module "ecs_service_eu_central_1" {
   vpc_id              = module.vpc_eu_central_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
+  frontend_image      = var.frontend_image
+  backend_image       = var.backend_image
 }
 
 module "api_gateway_eu_central_1" {
@@ -167,8 +170,7 @@ module "api_gateway_eu_central_1" {
   vpc_id                        = module.vpc_eu_central_1.vpc_id
   private_subnet_ids            = module.vpc_eu_central_1.private_subnet_ids
   ecs_service_security_group_id = module.ecs_service_eu_central_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_eu_central_1.service_arn
-  nlb_listener_arn              = module.ecs_service_eu_central_1.nlb_listener_arn
+  nlb_listener_arn              = module.ecs_service_eu_central_1.frontend_nlb_listener_arn
 }
 
 module "redis_eu_central_1" {
@@ -196,7 +198,7 @@ module "websocket_api_gateway_eu_central_1" {
   region           = "eu-central-1"
   vpc_id           = module.vpc_eu_central_1.vpc_id
   nlb_arn          = module.ecs_service_eu_central_1.nlb_arn
-  nlb_listener_arn = module.ecs_service_eu_central_1.nlb_listener_arn
+  nlb_listener_arn = module.ecs_service_eu_central_1.backend_nlb_listener_arn
 }
 
 
@@ -223,6 +225,8 @@ module "ecs_service_ap_south_1" {
   vpc_id              = module.vpc_ap_south_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["ap-south-1"]
   private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
+  frontend_image      = var.frontend_image
+  backend_image       = var.backend_image
 }
 
 module "api_gateway_ap_south_1" {
@@ -234,8 +238,7 @@ module "api_gateway_ap_south_1" {
   vpc_id                        = module.vpc_ap_south_1.vpc_id
   private_subnet_ids            = module.vpc_ap_south_1.private_subnet_ids
   ecs_service_security_group_id = module.ecs_service_ap_south_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_ap_south_1.service_arn
-  nlb_listener_arn              = module.ecs_service_ap_south_1.nlb_listener_arn
+  nlb_listener_arn              = module.ecs_service_ap_south_1.frontend_nlb_listener_arn
 }
 
 module "redis_ap_south_1" {
@@ -263,5 +266,5 @@ module "websocket_api_gateway_ap_south_1" {
   region           = "ap-south-1"
   vpc_id           = module.vpc_ap_south_1.vpc_id
   nlb_arn          = module.ecs_service_ap_south_1.nlb_arn
-  nlb_listener_arn = module.ecs_service_ap_south_1.nlb_listener_arn
+  nlb_listener_arn = module.ecs_service_ap_south_1.backend_nlb_listener_arn
 }
