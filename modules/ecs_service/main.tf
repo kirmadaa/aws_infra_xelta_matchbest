@@ -219,7 +219,7 @@ resource "aws_lb" "nlb" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name        = "xelta-${var.environment}-${var.region}-tg-frontend"
+  name        = "xelta-${var.environment}-${var.region}-frontend"
   port        = 80
   protocol    = "TCP"
   vpc_id      = var.vpc_id
@@ -227,7 +227,7 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 resource "aws_lb_target_group" "backend" {
-  name        = "xelta-${var.environment}-${var.region}-tg-backend"
+  name        = "xelta-${var.environment}-${var.region}-backend"
   port        = 8080
   protocol    = "TCP"
   vpc_id      = var.vpc_id
