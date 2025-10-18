@@ -88,7 +88,8 @@ module "api_gateway_us_east_1" {
   vpc_id                        = module.vpc_us_east_1.vpc_id
   private_subnet_ids            = module.vpc_us_east_1.private_subnet_ids
   ecs_service_security_group_id = module.ecs_service_us_east_1.service_security_group_id
-  nlb_listener_arn              = module.ecs_service_us_east_1.frontend_nlb_listener_arn
+  ecs_service_arn               = module.ecs_service_us_east_1.backend_service_arn  # <-- CORRECTED
+  nlb_listener_arn              = module.ecs_service_us_east_1.backend_nlb_listener_arn # <-- CORRECTED
 }
 
 module "route53_acm_us_east_1" {
@@ -170,7 +171,8 @@ module "api_gateway_eu_central_1" {
   vpc_id                        = module.vpc_eu_central_1.vpc_id
   private_subnet_ids            = module.vpc_eu_central_1.private_subnet_ids
   ecs_service_security_group_id = module.ecs_service_eu_central_1.service_security_group_id
-  nlb_listener_arn              = module.ecs_service_eu_central_1.frontend_nlb_listener_arn
+  ecs_service_arn               = module.ecs_service_eu_central_1.backend_service_arn  # <-- CORRECTED
+  nlb_listener_arn              = module.ecs_service_eu_central_1.backend_nlb_listener_arn # <-- CORRECTED
 }
 
 module "redis_eu_central_1" {
@@ -238,7 +240,8 @@ module "api_gateway_ap_south_1" {
   vpc_id                        = module.vpc_ap_south_1.vpc_id
   private_subnet_ids            = module.vpc_ap_south_1.private_subnet_ids
   ecs_service_security_group_id = module.ecs_service_ap_south_1.service_security_group_id
-  nlb_listener_arn              = module.ecs_service_ap_south_1.frontend_nlb_listener_arn
+  ecs_service_arn               = module.ecs_service_ap_south_1.backend_service_arn  # <-- CORRECTED
+  nlb_listener_arn              = module.ecs_service_ap_south_1.backend_nlb_listener_arn # <-- CORRECTED
 }
 
 module "redis_ap_south_1" {
