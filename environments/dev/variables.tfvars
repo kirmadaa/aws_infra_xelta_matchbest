@@ -15,3 +15,7 @@ vpc_cidr_blocks = {
 redis_node_type       = "cache.t3.micro"
 redis_num_cache_nodes = 1
 enable_redis          = true
+
+# Container Images
+frontend_image = "your-repo/your-frontend-image:dev" # <-- UPDATE
+backend_image  = "your-repo/your-backend-image:dev"  # <-- UPDATE
