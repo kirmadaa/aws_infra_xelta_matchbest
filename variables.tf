@@ -53,3 +53,15 @@ variable "enable_websocket_api" {
   type        = bool
   default     = true
 }
+
+variable "frontend_image" {
+  description = "Docker image for the frontend service"
+  type        = string
+  default     = "nginx:latest" # Replace with your default frontend image
+}
+
+variable "backend_image" {
+  description = "Docker image for the backend service"
+  type        = string
+  default     = "nginx:latest" # Replace with your default backend image
+}
