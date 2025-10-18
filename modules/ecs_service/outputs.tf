@@ -1,3 +1,13 @@
+output "frontend_service_arn" {
+  description = "ARN of the frontend ECS service"
+  value       = aws_ecs_service.frontend.id
+}
+
+output "backend_service_arn" {
+  description = "ARN of the backend ECS service"
+  value       = aws_ecs_service.backend.id
+}
+
 output "frontend_nlb_listener_arn" {
   description = "ARN of the NLB listener for the frontend"
   value       = aws_lb_listener.frontend.arn
