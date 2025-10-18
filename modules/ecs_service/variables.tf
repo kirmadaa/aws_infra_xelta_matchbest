@@ -22,3 +22,13 @@ variable "private_subnet_ids" {
   description = "List of private subnet IDs for the ECS tasks"
   type        = list(string)
 }
+
+variable "frontend_image" {
+  description = "Docker image for the frontend service"
+  type        = string
+}
+
+variable "backend_image" {
+  description = "Docker image for the backend service"
+  type        = string
+}
