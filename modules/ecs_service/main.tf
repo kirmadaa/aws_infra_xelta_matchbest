@@ -45,8 +45,8 @@ resource "aws_ecs_task_definition" "frontend" {
       essential = true
       portMappings = [
         {
-          containerPort = 80
-          hostPort      = 80
+          containerPort = 3000
+          hostPort      = 3000
         }
       ]
     }
@@ -69,7 +69,7 @@ resource "aws_ecs_service" "frontend" {
   load_balancer {
     target_group_arn = aws_lb_target_group.frontend.arn
     container_name   = "frontend"
-    container_port   = 80
+    container_port   = 3000
   }
 }
 
@@ -92,8 +92,8 @@ resource "aws_ecs_task_definition" "backend" {
       essential = true
       portMappings = [
         {
-          containerPort = 8080 # Assuming backend runs on 8080
-          hostPort      = 8080
+          containerPort = 5000 # Assuming backend runs on 8080
+          hostPort      = 5000
         }
       ]
     }
@@ -116,7 +116,7 @@ resource "aws_ecs_service" "backend" {
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
     container_name   = "backend"
-    container_port   = 8080
+    container_port   = 5000
   }
 }
 
