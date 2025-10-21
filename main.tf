@@ -9,21 +9,18 @@ data "aws_route53_zone" "main" {
 module "secrets_us_east_1" {
   source    = "./modules/secrets"
   providers = { aws = aws.us_east_1 }
-
   environment = var.environment
 }
 
 module "secrets_eu_central_1" {
   source    = "./modules/secrets"
   providers = { aws = aws.eu_central_1 }
-
   environment = var.environment
 }
 
 module "secrets_ap_south_1" {
   source    = "./modules/secrets"
   providers = { aws = aws.ap_south_1 }
-
   environment = var.environment
 }
 
@@ -40,12 +37,13 @@ module "cdn" {
   route53_zone_id = data.aws_route53_zone.main.zone_id
   waf_web_acl_arn = module.waf.waf_arn
 
-  # Origin info for each regional API Gateway
+  # --- FIX: Origins now point to the regional ALBs ---
   origins = {
-    us-east-1    = module.api_gateway_us_east_1.api_endpoint
-    eu-central-1 = module.api_gateway_eu_central_1.api_endpoint
-    ap-south-1   = module.api_gateway_ap_south_1.api_endpoint
+    us-east-1    = module.ecs_service_us_east_1.frontend_alb_dns_name
+    eu-central-1 = module.ecs_service_eu_central_1.frontend_alb_dns_name
+    ap-south-1   = module.ecs_service_ap_south_1.frontend_alb_dns_name
   }
+  # --- END FIX ---
 
   # ACM certificate for the CDN (must be in us-east-1)
   certificate_arn = module.route53_acm_us_east_1.certificate_arn
@@ -75,22 +73,12 @@ module "ecs_service_us_east_1" {
   vpc_id              = module.vpc_us_east_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["us-east-1"]
   private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
+  public_subnet_ids   = module.vpc_us_east_1.public_subnet_ids
   frontend_image      = var.frontend_images["us-east-1"]
   backend_image       = var.backend_images["us-east-1"]
 }
 
-module "api_gateway_us_east_1" {
-  source    = "./modules/api_gateway"
-  providers = { aws = aws.us_east_1 }
-
-  environment                   = var.environment
-  region                        = "us-east-1"
-  vpc_id                        = module.vpc_us_east_1.vpc_id
-  private_subnet_ids            = module.vpc_us_east_1.private_subnet_ids
-  ecs_service_security_group_id = module.ecs_service_us_east_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_us_east_1.backend_service_arn  # <-- CORRECTED
-  nlb_listener_arn              = module.ecs_service_us_east_1.frontend_nlb_listener_arn # <-- CORRECTED
-}
+# --- REMOVED: module "api_gateway_us_east_1" ---
 
 module "route53_acm_us_east_1" {
   source    = "./modules/route53_acm"
@@ -115,10 +103,8 @@ module "redis_us_east_1" {
   region           = "us-east-1"
   vpc_id           = module.vpc_us_east_1.vpc_id
   private_subnet_ids = module.vpc_us_east_1.private_subnet_ids
-
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-
   allowed_security_group_ids = [module.ecs_service_us_east_1.service_security_group_id]
 }
 
@@ -130,8 +116,8 @@ module "websocket_api_gateway_us_east_1" {
   environment      = var.environment
   region           = "us-east-1"
   vpc_id           = module.vpc_us_east_1.vpc_id
-  nlb_arn          = module.ecs_service_us_east_1.nlb_arn
-  nlb_listener_arn = module.ecs_service_us_east_1.backend_nlb_listener_arn # Assuming WebSocket API is for the backend
+  nlb_arn          = module.ecs_service_us_east_1.backend_nlb_arn # Points to backend NLB
+  nlb_listener_arn = module.ecs_service_us_east_1.backend_nlb_listener_arn # Points to backend listener
 }
 
 
@@ -158,22 +144,12 @@ module "ecs_service_eu_central_1" {
   vpc_id              = module.vpc_eu_central_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
+  public_subnet_ids   = module.vpc_eu_central_1.public_subnet_ids
   frontend_image      = var.frontend_images["eu-central-1"]
   backend_image       = var.backend_images["eu-central-1"]
 }
 
-module "api_gateway_eu_central_1" {
-  source    = "./modules/api_gateway"
-  providers = { aws = aws.eu_central_1 }
-
-  environment                   = var.environment
-  region                        = "eu-central-1"
-  vpc_id                        = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids            = module.vpc_eu_central_1.private_subnet_ids
-  ecs_service_security_group_id = module.ecs_service_eu_central_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_eu_central_1.backend_service_arn  # <-- CORRECTED
-  nlb_listener_arn              = module.ecs_service_eu_central_1.frontend_nlb_listener_arn # <-- CORRECTED
-}
+# --- REMOVED: module "api_gateway_eu_central_1" ---
 
 module "redis_eu_central_1" {
   count     = var.enable_redis ? 1 : 0
@@ -184,10 +160,8 @@ module "redis_eu_central_1" {
   region           = "eu-central-1"
   vpc_id           = module.vpc_eu_central_1.vpc_id
   private_subnet_ids = module.vpc_eu_central_1.private_subnet_ids
-
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-
   allowed_security_group_ids = [module.ecs_service_eu_central_1.service_security_group_id]
 }
 
@@ -199,7 +173,7 @@ module "websocket_api_gateway_eu_central_1" {
   environment      = var.environment
   region           = "eu-central-1"
   vpc_id           = module.vpc_eu_central_1.vpc_id
-  nlb_arn          = module.ecs_service_eu_central_1.nlb_arn
+  nlb_arn          = module.ecs_service_eu_central_1.backend_nlb_arn
   nlb_listener_arn = module.ecs_service_eu_central_1.backend_nlb_listener_arn
 }
 
@@ -227,22 +201,12 @@ module "ecs_service_ap_south_1" {
   vpc_id              = module.vpc_ap_south_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["ap-south-1"]
   private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
+  public_subnet_ids   = module.vpc_ap_south_1.public_subnet_ids
   frontend_image      = var.frontend_images["ap-south-1"]
   backend_image       = var.backend_images["ap-south-1"]
 }
 
-module "api_gateway_ap_south_1" {
-  source    = "./modules/api_gateway"
-  providers = { aws = aws.ap_south_1 }
-
-  environment                   = var.environment
-  region                        = "ap-south-1"
-  vpc_id                        = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids            = module.vpc_ap_south_1.private_subnet_ids
-  ecs_service_security_group_id = module.ecs_service_ap_south_1.service_security_group_id
-  ecs_service_arn               = module.ecs_service_ap_south_1.backend_service_arn  # <-- CORRECTED
-  nlb_listener_arn              = module.ecs_service_ap_south_1.backend_nlb_listener_arn # <-- CORRECTED
-}
+# --- REMOVED: module "api_gateway_ap_south_1" ---
 
 module "redis_ap_south_1" {
   count     = var.enable_redis ? 1 : 0
@@ -253,10 +217,8 @@ module "redis_ap_south_1" {
   region           = "ap-south-1"
   vpc_id           = module.vpc_ap_south_1.vpc_id
   private_subnet_ids = module.vpc_ap_south_1.private_subnet_ids
-
   node_type       = var.redis_node_type
   num_cache_nodes = var.redis_num_cache_nodes
-
   allowed_security_group_ids = [module.ecs_service_ap_south_1.service_security_group_id]
 }
 
@@ -268,6 +230,7 @@ module "websocket_api_gateway_ap_south_1" {
   environment      = var.environment
   region           = "ap-south-1"
   vpc_id           = module.vpc_ap_south_1.vpc_id
-  nlb_arn          = module.ecs_service_ap_south_1.nlb_arn
-  nlb_listener_arn = module.ecs_service_ap_south_1.frontend_nlb_listener_arn
+  nlb_arn          = module.ecs_service_ap_south_1.backend_nlb_arn
+  # --- FIX: Pointing WSS to the correct backend listener ---
+  nlb_listener_arn = module.ecs_service_ap_south_1.backend_nlb_listener_arn
 }

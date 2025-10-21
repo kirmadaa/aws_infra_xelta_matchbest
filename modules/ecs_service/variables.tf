@@ -32,3 +32,8 @@ variable "backend_image" {
   description = "Docker image for the backend service"
   type        = string
 }
+# Add this new variable
+variable "public_subnet_ids" {
+  description = "List of public subnet IDs for the ALB"
+  type        = list(string)
+}
