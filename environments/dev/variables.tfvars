@@ -17,5 +17,13 @@ redis_num_cache_nodes = 1
 enable_redis          = true
 
 # Container Images
-frontend_image = "your-repo/your-frontend-image:dev" # <-- UPDATE
-backend_image  = "your-repo/your-backend-image:dev"  # <-- UPDATE
+frontend_images = {
+  "us-east-1"    = "your-repo/your-frontend-image:1.2.0-us-east-1"
+  "eu-central-1" = "your-repo/your-frontend-image:1.2.0-eu-central-1"
+  "ap-south-1"   = "your-repo/your-frontend-image:1.2.0-ap-south-1"
+}
+backend_images = {
+  "us-east-1"    = "your-repo/your-backend-image:1.2.0-us-east-1"
+  "eu-central-1" = "your-repo/your-backend-image:1.2.0-eu-central-1"
+  "ap-south-1"   = "your-repo/your-backend-image:1.2.0-ap-south-1"
+}
