@@ -17,5 +17,5 @@ redis_num_cache_nodes = 1
 enable_redis          = true
 
 # Container Images
-frontend_image = "your-repo/your-frontend-image:dev" # <-- UPDATE
-backend_image  = "your-repo/your-backend-image:dev"  # <-- UPDATE
+#frontend_image = "your-repo/your-frontend-image:dev" # <-- UPDATE
+#backend_image  = "your-repo/your-backend-image:dev"  # <-- UPDATE

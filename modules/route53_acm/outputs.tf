@@ -13,7 +13,3 @@ output "route53_record_fqdn" {
   value       = aws_route53_record.app.fqdn
 }
 
-output "health_check_id" {
-  description = "Route53 health check ID"
-  value       = aws_route53_health_check.alb.id
-}
