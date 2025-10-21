@@ -75,8 +75,8 @@ module "ecs_service_us_east_1" {
   vpc_id              = module.vpc_us_east_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["us-east-1"]
   private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
-  frontend_image      = var.frontend_image
-  backend_image       = var.backend_image
+  frontend_image      = var.frontend_images["us-east-1"]
+  backend_image       = var.backend_images["us-east-1"]
 }
 
 module "api_gateway_us_east_1" {
@@ -158,8 +158,8 @@ module "ecs_service_eu_central_1" {
   vpc_id              = module.vpc_eu_central_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
-  frontend_image      = var.frontend_image
-  backend_image       = var.backend_image
+  frontend_image      = var.frontend_images["eu-central-1"]
+  backend_image       = var.backend_images["eu-central-1"]
 }
 
 module "api_gateway_eu_central_1" {
@@ -227,8 +227,8 @@ module "ecs_service_ap_south_1" {
   vpc_id              = module.vpc_ap_south_1.vpc_id
   vpc_cidr            = var.vpc_cidr_blocks["ap-south-1"]
   private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
-  frontend_image      = var.frontend_image
-  backend_image       = var.backend_image
+  frontend_image      = var.frontend_images["ap-south-1"]
+  backend_image       = var.backend_images["ap-south-1"]
 }
 
 module "api_gateway_ap_south_1" {
