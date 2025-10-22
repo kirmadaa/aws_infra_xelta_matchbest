@@ -91,8 +91,9 @@ module "route53_acm_us_east_1" {
   route53_zone_id = data.aws_route53_zone.main.zone_id
 
   # Create Route53 record for the CDN
-  cdn_dns_name    = module.cdn.cdn_dns_name
-  cdn_zone_id     = module.cdn.cdn_zone_id
+  create_cdn_record = true
+  cdn_dns_name      = module.cdn.cdn_dns_name
+  cdn_zone_id       = module.cdn.cdn_zone_id
 }
 
 module "redis_us_east_1" {
