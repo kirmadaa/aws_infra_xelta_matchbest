@@ -228,7 +228,7 @@ resource "aws_lb_target_group" "frontend_http" {
 
   health_check {
     protocol = "HTTP"
-    path     = "/health"
+    path     = "/" # Assuming frontend has a root health check
   }
 
   lifecycle {
@@ -236,11 +236,10 @@ resource "aws_lb_target_group" "frontend_http" {
   }
 }
 
-resource "aws_lb_listener" "frontend_https" {
+resource "aws_lb_listener" "frontend_http" {
   load_balancer_arn = aws_lb.frontend_alb.arn
-  port              = 443
-  protocol          = "HTTPS"
-  certificate_arn   = var.certificate_arn
+  port              = 80
+  protocol          = "HTTP"
 
   default_action {
     type             = "forward"

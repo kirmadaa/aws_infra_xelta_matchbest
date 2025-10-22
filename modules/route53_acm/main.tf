@@ -41,7 +41,6 @@ resource "aws_acm_certificate_validation" "main" {
 
 # Route53 Alias Record for CloudFront Distribution
 resource "aws_route53_record" "app" {
-  count   = var.create_cdn_record ? 1 : 0
   zone_id = var.route53_zone_id
   name    = var.domain_name
   type    = "A"
