@@ -32,6 +32,11 @@ variable "backend_image" {
   description = "Docker image for the backend service"
   type        = string
 }
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate for the ALB"
+  type        = string
+}
 # Add this new variable
 variable "public_subnet_ids" {
   description = "List of public subnet IDs for the ALB"

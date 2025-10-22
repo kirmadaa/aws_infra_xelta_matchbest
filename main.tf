@@ -76,6 +76,7 @@ module "ecs_service_us_east_1" {
   public_subnet_ids   = module.vpc_us_east_1.public_subnet_ids
   frontend_image      = var.frontend_images["us-east-1"]
   backend_image       = var.backend_images["us-east-1"]
+  certificate_arn     = module.route53_acm_us_east_1.certificate_arn
 }
 
 # --- REMOVED: module "api_gateway_us_east_1" ---
@@ -147,9 +148,20 @@ module "ecs_service_eu_central_1" {
   public_subnet_ids   = module.vpc_eu_central_1.public_subnet_ids
   frontend_image      = var.frontend_images["eu-central-1"]
   backend_image       = var.backend_images["eu-central-1"]
+  certificate_arn     = module.route53_acm_eu_central_1.certificate_arn
 }
 
 # --- REMOVED: module "api_gateway_eu_central_1" ---
+
+module "route53_acm_eu_central_1" {
+  source    = "./modules/route53_acm"
+  providers = { aws = aws.eu_central_1 }
+
+  environment     = var.environment
+  region          = "eu-central-1"
+  domain_name     = var.domain_name
+  route53_zone_id = data.aws_route53_zone.main.zone_id
+}
 
 module "redis_eu_central_1" {
   count     = var.enable_redis ? 1 : 0
@@ -204,9 +216,20 @@ module "ecs_service_ap_south_1" {
   public_subnet_ids   = module.vpc_ap_south_1.public_subnet_ids
   frontend_image      = var.frontend_images["ap-south-1"]
   backend_image       = var.backend_images["ap-south-1"]
+  certificate_arn     = module.route53_acm_ap_south_1.certificate_arn
 }
 
 # --- REMOVED: module "api_gateway_ap_south_1" ---
+
+module "route53_acm_ap_south_1" {
+  source    = "./modules/route53_acm"
+  providers = { aws = aws.ap_south_1 }
+
+  environment     = var.environment
+  region          = "ap-south-1"
+  domain_name     = var.domain_name
+  route53_zone_id = data.aws_route53_zone.main.zone_id
+}
 
 module "redis_ap_south_1" {
   count     = var.enable_redis ? 1 : 0
