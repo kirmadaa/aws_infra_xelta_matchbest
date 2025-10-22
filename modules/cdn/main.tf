@@ -115,7 +115,7 @@ resource "aws_cloudfront_distribution" "main" {
       custom_origin_config {
         http_port              = 80
         https_port             = 443
-        origin_protocol_policy = "http-only" # ALB is internal, on port 80
+        origin_protocol_policy = "https-only" # Connect to ALB over HTTPS
         origin_ssl_protocols   = ["TLSv1.2"]
       }
     }
