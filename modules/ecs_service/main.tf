@@ -286,6 +286,19 @@ resource "aws_lb_listener" "backend_tcp" {
 
 # --- Security Groups ---
 
+resource "aws_security_group" "worker_lambda_sg" {
+  name        = "xelta-${var.environment}-${var.region}-worker-lambda"
+  description = "Allow outbound traffic from worker lambda"
+  vpc_id      = var.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group" "alb_sg" {
   name        = "xelta-${var.environment}-${var.region}-alb"
   description = "Allow HTTP traffic from VPC (for CDN)"
@@ -317,7 +330,14 @@ resource "aws_security_group" "nlb_sg" {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr] # Allows internal traffic
+    security_groups = [aws_security_group.worker_lambda_sg.id]
+  }
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {

@@ -12,27 +12,6 @@ resource "aws_apigatewayv2_api" "main" {
   }
 }
 
-# VPC Link for API Gateway to connect to private resources
-resource "aws_api_gateway_vpc_link" "main" {
-  name        = "xelta-websocket-${var.environment}-${var.region}-v1"
-  target_arns = [var.nlb_arn]
-
-  tags = {
-    Name        = "xelta-websocket-${var.environment}-vpclink-${var.region}"
-    Environment = var.environment
-  }
-}
-
-# API Gateway Integration for all routes
-resource "aws_apigatewayv2_integration" "main" {
-  api_id             = aws_apigatewayv2_api.main.id
-  integration_type   = "HTTP_PROXY"
-  integration_method = "ANY"
-  integration_uri    = var.nlb_listener_arn
-  connection_type    = "VPC_LINK"
-  connection_id      = aws_api_gateway_vpc_link.main.id
-}
-
 # IAM Role for API Gateway to write to CloudWatch Logs
 resource "aws_iam_role" "api_gateway_logging" {
   name = "xelta-websocket-${var.environment}-${var.region}-logging-role"
@@ -61,30 +40,42 @@ resource "aws_api_gateway_account" "main" {
   depends_on = [aws_iam_role_policy_attachment.api_gateway_logging]
 }
 
+# API Gateway Integrations for Lambda functions
+resource "aws_apigatewayv2_integration" "connect" {
+  api_id           = aws_apigatewayv2_api.main.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = var.connect_lambda_arn
+}
+
+resource "aws_apigatewayv2_integration" "default" {
+  api_id           = aws_apigatewayv2_api.main.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = var.default_lambda_arn
+}
+
+resource "aws_apigatewayv2_integration" "disconnect" {
+  api_id           = aws_apigatewayv2_api.main.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = var.disconnect_lambda_arn
+}
+
 # WebSocket Routes
 resource "aws_apigatewayv2_route" "connect" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "$connect"
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.connect.id}"
 }
 
 resource "aws_apigatewayv2_route" "disconnect" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "$disconnect"
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
 }
 
 resource "aws_apigatewayv2_route" "default" {
   api_id    = aws_apigatewayv2_api.main.id
   route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
-}
-
-resource "aws_apigatewayv2_route" "custom" {
-  for_each  = toset(var.custom_routes)
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = each.key
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.default.id}"
 }
 
 # API Gateway Stage

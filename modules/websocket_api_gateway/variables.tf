@@ -15,13 +15,18 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "nlb_arn" {
-  description = "The ARN of the Network Load Balancer to integrate with"
+variable "connect_lambda_arn" {
+  description = "The ARN of the Connect Lambda function"
   type        = string
 }
 
-variable "nlb_listener_arn" {
-  description = "The ARN of the Network Load Balancer listener to integrate with"
+variable "default_lambda_arn" {
+  description = "The ARN of the Default Lambda function"
+  type        = string
+}
+
+variable "disconnect_lambda_arn" {
+  description = "The ARN of the Disconnect Lambda function"
   type        = string
 }
 
