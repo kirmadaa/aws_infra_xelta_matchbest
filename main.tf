@@ -185,6 +185,12 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment_us_east_1" {
   policy_arn = aws_iam_policy.lambda_policy_us_east_1.arn
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access_us_east_1" {
+  provider   = aws.us_east_1
+  role       = aws_iam_role.lambda_exec_us_east_1.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_us_east_1" {
   provider      = aws.us_east_1
@@ -212,6 +218,24 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
       SQS_QUEUE_URL  = aws_sqs_queue.jobs_us_east_1.id
     }
   }
+}
+
+resource "aws_lambda_event_source_mapping" "worker_trigger_ap_south_1" {
+  provider         = aws.ap_south_1
+  event_source_arn = aws_sqs_queue.jobs_ap_south_1.arn
+  function_name    = aws_lambda_function.worker_ap_south_1.arn
+}
+
+resource "aws_lambda_event_source_mapping" "worker_trigger_eu_central_1" {
+  provider         = aws.eu_central_1
+  event_source_arn = aws_sqs_queue.jobs_eu_central_1.arn
+  function_name    = aws_lambda_function.worker_eu_central_1.arn
+}
+
+resource "aws_lambda_event_source_mapping" "worker_trigger_us_east_1" {
+  provider         = aws.us_east_1
+  event_source_arn = aws_sqs_queue.jobs_us_east_1.arn
+  function_name    = aws_lambda_function.worker_us_east_1.arn
 }
 
 # --- Worker Lambda ---
@@ -252,14 +276,15 @@ module "ecs_service_us_east_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.us_east_1 }
 
-  environment         = var.environment
-  region              = "us-east-1"
-  vpc_id              = module.vpc_us_east_1.vpc_id
-  vpc_cidr            = var.vpc_cidr_blocks["us-east-1"]
-  private_subnet_ids  = module.vpc_us_east_1.private_subnet_ids
-  public_subnet_ids   = module.vpc_us_east_1.public_subnet_ids
-  frontend_image      = var.frontend_images["us-east-1"]
-  backend_image       = var.backend_images["us-east-1"]
+  environment            = var.environment
+  region                 = "us-east-1"
+  vpc_id                 = module.vpc_us_east_1.vpc_id
+  vpc_cidr               = var.vpc_cidr_blocks["us-east-1"]
+  private_subnet_ids     = module.vpc_us_east_1.private_subnet_ids
+  public_subnet_ids      = module.vpc_us_east_1.public_subnet_ids
+  frontend_image         = var.frontend_images["us-east-1"]
+  backend_image          = var.backend_images["us-east-1"]
+  http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_us_east_1.id
 }
 
 # --- REMOVED: module "api_gateway_us_east_1" ---
@@ -316,6 +341,7 @@ resource "aws_apigatewayv2_vpc_link" "http_api_us_east_1" {
   provider    = aws.us_east_1
   name        = "xelta-http-api-${var.environment}-us-east-1-vpclink"
   subnet_ids  = module.vpc_us_east_1.private_subnet_ids
+  security_group_ids = [aws_security_group.http_api_vpclink_sg_us_east_1.id]
 }
 
 resource "aws_apigatewayv2_integration" "http_api_us_east_1" {
@@ -340,6 +366,48 @@ resource "aws_apigatewayv2_stage" "http_api_us_east_1" {
   api_id      = aws_apigatewayv2_api.http_api_us_east_1.id
   name        = "$default"
   auto_deploy = true
+}
+
+resource "aws_security_group" "http_api_vpclink_sg_ap_south_1" {
+  provider    = aws.ap_south_1
+  name        = "xelta-http-api-${var.environment}-ap-south-1-vpclink-sg"
+  description = "Allow traffic from HTTP API Gateway VPC Link"
+  vpc__id      = module.vpc_ap_south_1.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "http_api_vpclink_sg_eu_central_1" {
+  provider    = aws.eu_central_1
+  name        = "xelta-http-api-${var.environment}-eu-central-1-vpclink-sg"
+  description = "Allow traffic from HTTP API Gateway VPC Link"
+  vpc_id      = module.vpc_eu_central_1.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "http_api_vpclink_sg_us_east_1" {
+  provider    = aws.us_east_1
+  name        = "xelta-http-api-${var.environment}-us-east-1-vpclink-sg"
+  description = "Allow traffic from HTTP API Gateway VPC Link"
+  vpc_id      = module.vpc_us_east_1.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 
@@ -403,6 +471,12 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment_eu_central_1
   provider   = aws.eu_central_1
   role       = aws_iam_role.lambda_exec_eu_central_1.name
   policy_arn = aws_iam_policy.lambda_policy_eu_central_1.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access_eu_central_1" {
+  provider   = aws.eu_central_1
+  role       = aws_iam_role.lambda_exec_eu_central_1.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 # --- ConnectHandler Lambda ---
@@ -472,14 +546,15 @@ module "ecs_service_eu_central_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.eu_central_1 }
 
-  environment         = var.environment
-  region              = "eu-central-1"
-  vpc_id              = module.vpc_eu_central_1.vpc_id
-  vpc_cidr            = var.vpc_cidr_blocks["eu-central-1"]
-  private_subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
-  public_subnet_ids   = module.vpc_eu_central_1.public_subnet_ids
-  frontend_image      = var.frontend_images["eu-central-1"]
-  backend_image       = var.backend_images["eu-central-1"]
+  environment            = var.environment
+  region                 = "eu-central-1"
+  vpc_id                 = module.vpc_eu_central_1.vpc_id
+  vpc_cidr               = var.vpc_cidr_blocks["eu-central-1"]
+  private_subnet_ids     = module.vpc_eu_central_1.private_subnet_ids
+  public_subnet_ids      = module.vpc_eu_central_1.public_subnet_ids
+  frontend_image         = var.frontend_images["eu-central-1"]
+  backend_image          = var.backend_images["eu-central-1"]
+  http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_eu_central_1.id
 }
 
 # --- REMOVED: module "api_gateway_eu_central_1" ---
@@ -522,6 +597,7 @@ resource "aws_apigatewayv2_vpc_link" "http_api_eu_central_1" {
   provider    = aws.eu_central_1
   name        = "xelta-http-api-${var.environment}-eu-central-1-vpclink"
   subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
+  security_group_ids = [aws_security_group.http_api_vpclink_sg_eu_central_1.id]
 }
 
 resource "aws_apigatewayv2_integration" "http_api_eu_central_1" {
@@ -611,6 +687,12 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment_ap_south_1" 
   policy_arn = aws_iam_policy.lambda_policy_ap_south_1.arn
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access_ap_south_1" {
+  provider   = aws.ap_south_1
+  role       = aws_iam_role.lambda_exec_ap_south_1.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_ap_south_1" {
   provider      = aws.ap_south_1
@@ -678,14 +760,15 @@ module "ecs_service_ap_south_1" {
   source    = "./modules/ecs_service"
   providers = { aws = aws.ap_south_1 }
 
-  environment         = var.environment
-  region              = "ap-south-1"
-  vpc_id              = module.vpc_ap_south_1.vpc_id
-  vpc_cidr            = var.vpc_cidr_blocks["ap-south-1"]
-  private_subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
-  public_subnet_ids   = module.vpc_ap_south_1.public_subnet_ids
-  frontend_image      = var.frontend_images["ap-south-1"]
-  backend_image       = var.backend_images["ap-south-1"]
+  environment            = var.environment
+  region                 = "ap-south-1"
+  vpc_id                 = module.vpc_ap_south_1.vpc_id
+  vpc_cidr               = var.vpc_cidr_blocks["ap-south-1"]
+  private_subnet_ids     = module.vpc_ap_south_1.private_subnet_ids
+  public_subnet_ids      = module.vpc_ap_south_1.public_subnet_ids
+  frontend_image         = var.frontend_images["ap-south-1"]
+  backend_image          = var.backend_images["ap-south-1"]
+  http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_ap_south_1.id
 }
 
 # --- REMOVED: module "api_gateway_ap_south_1" ---
@@ -728,6 +811,7 @@ resource "aws_apigatewayv2_vpc_link" "http_api_ap_south_1" {
   provider    = aws.ap_south_1
   name        = "xelta-http-api-${var.environment}-ap-south-1-vpclink"
   subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
+  security_group_ids = [aws_security_group.http_api_vpclink_sg_ap_south_1.id]
 }
 
 resource "aws_apigatewayv2_integration" "http_api_ap_south_1" {
