@@ -31,9 +31,9 @@ module "waf" {
 }
 
 module "cdn" {
-  source      = "./modules/cdn"
-  environment = var.environment
-  domain_name = var.domain_name
+  source          = "./modules/cdn"
+  environment     = var.environment
+  domain_name     = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
   waf_web_acl_arn = module.waf.waf_arn
 
@@ -193,23 +193,27 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_us_east_1" {
 
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_us_east_1" {
-  provider      = aws.us_east_1
-  function_name = "xelta-${var.environment}-connect-handler-us-east-1"
-  role          = aws_iam_role.lambda_exec_us_east_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/connect.zip"
+  provider         = aws.us_east_1
+  function_name    = "xelta-${var.environment}-connect-handler-us-east-1"
+  role             = aws_iam_role.lambda_exec_us_east_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- StartJobHandler Lambda ---
 resource "aws_lambda_function" "start_job_handler_us_east_1" {
-  provider      = aws.us_east_1
-  function_name = "xelta-${var.environment}-start-job-handler-us-east-1"
-  role          = aws_iam_role.lambda_exec_us_east_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/start_job.zip"
+  provider         = aws.us_east_1
+  function_name    = "xelta-${var.environment}-start-job-handler-us-east-1"
+  role             = aws_iam_role.lambda_exec_us_east_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/start_job.zip"
   source_code_hash = filebase64sha256("lambda/start_job.zip")
 
   environment {
@@ -217,6 +221,10 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
       DYNAMODB_TABLE = aws_dynamodb_table.jobs_us_east_1.name
       SQS_QUEUE_URL  = aws_sqs_queue.jobs_us_east_1.id
     }
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -240,12 +248,12 @@ resource "aws_lambda_event_source_mapping" "worker_trigger_us_east_1" {
 
 # --- Worker Lambda ---
 resource "aws_lambda_function" "worker_us_east_1" {
-  provider      = aws.us_east_1
-  function_name = "xelta-${var.environment}-worker-us-east-1"
-  role          = aws_iam_role.lambda_exec_us_east_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/worker.zip"
+  provider         = aws.us_east_1
+  function_name    = "xelta-${var.environment}-worker-us-east-1"
+  role             = aws_iam_role.lambda_exec_us_east_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/worker.zip"
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
   vpc_config {
@@ -253,11 +261,15 @@ resource "aws_lambda_function" "worker_us_east_1" {
     security_group_ids = [module.ecs_service_us_east_1.worker_lambda_sg_id]
   }
 
-  environment = {
+  environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.jobs_us_east_1.name
       S3_BUCKET      = aws_s3_bucket.results_us_east_1.id
     }
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -308,12 +320,12 @@ module "redis_us_east_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.us_east_1 }
 
-  environment      = var.environment
-  region           = "us-east-1"
-  vpc_id           = module.vpc_us_east_1.vpc_id
-  private_subnet_ids = module.vpc_us_east_1.private_subnet_ids
-  node_type       = var.redis_node_type
-  num_cache_nodes = var.redis_num_cache_nodes
+  environment                = var.environment
+  region                     = "us-east-1"
+  vpc_id                     = module.vpc_us_east_1.vpc_id
+  private_subnet_ids         = module.vpc_us_east_1.private_subnet_ids
+  node_type                  = var.redis_node_type
+  num_cache_nodes            = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_us_east_1.service_security_group_id]
 }
 
@@ -322,11 +334,11 @@ module "websocket_api_gateway_us_east_1" {
   source    = "./modules/websocket_api_gateway"
   providers = { aws = aws.us_east_1 }
 
-  environment      = var.environment
-  region           = "us-east-1"
-  vpc_id           = module.vpc_us_east_1.vpc_id
-  connect_lambda_arn = aws_lambda_function.connect_handler_us_east_1.arn
-  default_lambda_arn = aws_lambda_function.start_job_handler_us_east_1.arn
+  environment           = var.environment
+  region                = "us-east-1"
+  vpc_id                = module.vpc_us_east_1.vpc_id
+  connect_lambda_arn    = aws_lambda_function.connect_handler_us_east_1.arn
+  default_lambda_arn    = aws_lambda_function.start_job_handler_us_east_1.arn
   disconnect_lambda_arn = aws_lambda_function.connect_handler_us_east_1.arn # Using connect handler for disconnect as well
 }
 
@@ -338,9 +350,9 @@ resource "aws_apigatewayv2_api" "http_api_us_east_1" {
 }
 
 resource "aws_apigatewayv2_vpc_link" "http_api_us_east_1" {
-  provider    = aws.us_east_1
-  name        = "xelta-http-api-${var.environment}-us-east-1-vpclink"
-  subnet_ids  = module.vpc_us_east_1.private_subnet_ids
+  provider           = aws.us_east_1
+  name               = "xelta-http-api-${var.environment}-us-east-1-vpclink"
+  subnet_ids         = module.vpc_us_east_1.private_subnet_ids
   security_group_ids = [aws_security_group.http_api_vpclink_sg_us_east_1.id]
 }
 
@@ -355,10 +367,10 @@ resource "aws_apigatewayv2_integration" "http_api_us_east_1" {
 }
 
 resource "aws_apigatewayv2_route" "http_api_us_east_1" {
-  provider    = aws.us_east_1
-  api_id      = aws_apigatewayv2_api.http_api_us_east_1.id
-  route_key   = "ANY /{proxy+}"
-  target      = "integrations/${aws_apigatewayv2_integration.http_api_us_east_1.id}"
+  provider  = aws.us_east_1
+  api_id    = aws_apigatewayv2_api.http_api_us_east_1.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.http_api_us_east_1.id}"
 }
 
 resource "aws_apigatewayv2_stage" "http_api_us_east_1" {
@@ -372,7 +384,7 @@ resource "aws_security_group" "http_api_vpclink_sg_ap_south_1" {
   provider    = aws.ap_south_1
   name        = "xelta-http-api-${var.environment}-ap-south-1-vpclink-sg"
   description = "Allow traffic from HTTP API Gateway VPC Link"
-  vpc__id      = module.vpc_ap_south_1.vpc_id
+  vpc_id      = module.vpc_ap_south_1.vpc_id
 
   egress {
     from_port   = 0
@@ -481,23 +493,27 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_eu_central_1" {
 
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_eu_central_1" {
-  provider      = aws.eu_central_1
-  function_name = "xelta-${var.environment}-connect-handler-eu-central-1"
-  role          = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/connect.zip"
+  provider         = aws.eu_central_1
+  function_name    = "xelta-${var.environment}-connect-handler-eu-central-1"
+  role             = aws_iam_role.lambda_exec_eu_central_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- StartJobHandler Lambda ---
 resource "aws_lambda_function" "start_job_handler_eu_central_1" {
-  provider      = aws.eu_central_1
-  function_name = "xelta-${var.environment}-start-job-handler-eu-central-1"
-  role          = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/start_job.zip"
+  provider         = aws.eu_central_1
+  function_name    = "xelta-${var.environment}-start-job-handler-eu-central-1"
+  role             = aws_iam_role.lambda_exec_eu_central_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/start_job.zip"
   source_code_hash = filebase64sha256("lambda/start_job.zip")
 
   environment {
@@ -506,16 +522,20 @@ resource "aws_lambda_function" "start_job_handler_eu_central_1" {
       SQS_QUEUE_URL  = aws_sqs_queue.jobs_eu_central_1.id
     }
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- Worker Lambda ---
 resource "aws_lambda_function" "worker_eu_central_1" {
-  provider      = aws.eu_central_1
-  function_name = "xelta-${var.environment}-worker-eu-central-1"
-  role          = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/worker.zip"
+  provider         = aws.eu_central_1
+  function_name    = "xelta-${var.environment}-worker-eu-central-1"
+  role             = aws_iam_role.lambda_exec_eu_central_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/worker.zip"
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
   vpc_config {
@@ -523,11 +543,15 @@ resource "aws_lambda_function" "worker_eu_central_1" {
     security_group_ids = [module.ecs_service_eu_central_1.worker_lambda_sg_id]
   }
 
-  environment = {
+  environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.jobs_eu_central_1.name
       S3_BUCKET      = aws_s3_bucket.results_eu_central_1.id
     }
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -564,12 +588,12 @@ module "redis_eu_central_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.eu_central_1 }
 
-  environment      = var.environment
-  region           = "eu-central-1"
-  vpc_id           = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids = module.vpc_eu_central_1.private_subnet_ids
-  node_type       = var.redis_node_type
-  num_cache_nodes = var.redis_num_cache_nodes
+  environment                = var.environment
+  region                     = "eu-central-1"
+  vpc_id                     = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
+  node_type                  = var.redis_node_type
+  num_cache_nodes            = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_eu_central_1.service_security_group_id]
 }
 
@@ -578,11 +602,11 @@ module "websocket_api_gateway_eu_central_1" {
   source    = "./modules/websocket_api_gateway"
   providers = { aws = aws.eu_central_1 }
 
-  environment      = var.environment
-  region           = "eu-central-1"
-  vpc_id           = module.vpc_eu_central_1.vpc_id
-  connect_lambda_arn = aws_lambda_function.connect_handler_eu_central_1.arn
-  default_lambda_arn = aws_lambda_function.start_job_handler_eu_central_1.arn
+  environment           = var.environment
+  region                = "eu-central-1"
+  vpc_id                = module.vpc_eu_central_1.vpc_id
+  connect_lambda_arn    = aws_lambda_function.connect_handler_eu_central_1.arn
+  default_lambda_arn    = aws_lambda_function.start_job_handler_eu_central_1.arn
   disconnect_lambda_arn = aws_lambda_function.connect_handler_eu_central_1.arn # Using connect handler for disconnect as well
 }
 
@@ -594,9 +618,9 @@ resource "aws_apigatewayv2_api" "http_api_eu_central_1" {
 }
 
 resource "aws_apigatewayv2_vpc_link" "http_api_eu_central_1" {
-  provider    = aws.eu_central_1
-  name        = "xelta-http-api-${var.environment}-eu-central-1-vpclink"
-  subnet_ids  = module.vpc_eu_central_1.private_subnet_ids
+  provider           = aws.eu_central_1
+  name               = "xelta-http-api-${var.environment}-eu-central-1-vpclink"
+  subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
   security_group_ids = [aws_security_group.http_api_vpclink_sg_eu_central_1.id]
 }
 
@@ -611,10 +635,10 @@ resource "aws_apigatewayv2_integration" "http_api_eu_central_1" {
 }
 
 resource "aws_apigatewayv2_route" "http_api_eu_central_1" {
-  provider    = aws.eu_central_1
-  api_id      = aws_apigatewayv2_api.http_api_eu_central_1.id
-  route_key   = "ANY /{proxy+}"
-  target      = "integrations/${aws_apigatewayv2_integration.http_api_eu_central_1.id}"
+  provider  = aws.eu_central_1
+  api_id    = aws_apigatewayv2_api.http_api_eu_central_1.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.http_api_eu_central_1.id}"
 }
 
 resource "aws_apigatewayv2_stage" "http_api_eu_central_1" {
@@ -695,23 +719,27 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_ap_south_1" {
 
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_ap_south_1" {
-  provider      = aws.ap_south_1
-  function_name = "xelta-${var.environment}-connect-handler-ap_south_1"
-  role          = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/connect.zip"
+  provider         = aws.ap_south_1
+  function_name    = "xelta-${var.environment}-connect-handler-ap_south_1"
+  role             = aws_iam_role.lambda_exec_ap_south_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- StartJobHandler Lambda ---
 resource "aws_lambda_function" "start_job_handler_ap_south_1" {
-  provider      = aws.ap_south_1
-  function_name = "xelta-${var.environment}-start-job-handler-ap_south_1"
-  role          = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/start_job.zip"
+  provider         = aws.ap_south_1
+  function_name    = "xelta-${var.environment}-start-job-handler-ap_south_1"
+  role             = aws_iam_role.lambda_exec_ap_south_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/start_job.zip"
   source_code_hash = filebase64sha256("lambda/start_job.zip")
 
   environment {
@@ -720,16 +748,20 @@ resource "aws_lambda_function" "start_job_handler_ap_south_1" {
       SQS_QUEUE_URL  = aws_sqs_queue.jobs_ap_south_1.id
     }
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- Worker Lambda ---
 resource "aws_lambda_function" "worker_ap_south_1" {
-  provider      = aws.ap_south_1
-  function_name = "xelta-${var.environment}-worker-ap_south_1"
-  role          = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler       = "index.handler"
-  runtime       = "nodejs16.x"
-  filename      = "lambda/worker.zip"
+  provider         = aws.ap_south_1
+  function_name    = "xelta-${var.environment}-worker-ap_south_1"
+  role             = aws_iam_role.lambda_exec_ap_south_1.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  filename         = "lambda/worker.zip" # <-- This was missing
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
   vpc_config {
@@ -737,11 +769,15 @@ resource "aws_lambda_function" "worker_ap_south_1" {
     security_group_ids = [module.ecs_service_ap_south_1.worker_lambda_sg_id]
   }
 
-  environment = {
+  environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.jobs_ap_south_1.name
       S3_BUCKET      = aws_s3_bucket.results_ap_south_1.id
     }
+  }
+
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -778,12 +814,12 @@ module "redis_ap_south_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.ap_south_1 }
 
-  environment      = var.environment
-  region           = "ap-south-1"
-  vpc_id           = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids = module.vpc_ap_south_1.private_subnet_ids
-  node_type       = var.redis_node_type
-  num_cache_nodes = var.redis_num_cache_nodes
+  environment                = var.environment
+  region                     = "ap-south-1"
+  vpc_id                     = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
+  node_type                  = var.redis_node_type
+  num_cache_nodes            = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_ap_south_1.service_security_group_id]
 }
 
@@ -792,11 +828,11 @@ module "websocket_api_gateway_ap_south_1" {
   source    = "./modules/websocket_api_gateway"
   providers = { aws = aws.ap_south_1 }
 
-  environment      = var.environment
-  region           = "ap-south-1"
-  vpc_id           = module.vpc_ap_south_1.vpc_id
-  connect_lambda_arn = aws_lambda_function.connect_handler_ap_south_1.arn
-  default_lambda_arn = aws_lambda_function.start_job_handler_ap_south_1.arn
+  environment           = var.environment
+  region                = "ap-south-1"
+  vpc_id                = module.vpc_ap_south_1.vpc_id
+  connect_lambda_arn    = aws_lambda_function.connect_handler_ap_south_1.arn
+  default_lambda_arn    = aws_lambda_function.start_job_handler_ap_south_1.arn
   disconnect_lambda_arn = aws_lambda_function.connect_handler_ap_south_1.arn # Using connect handler for disconnect as well
 }
 
@@ -808,9 +844,9 @@ resource "aws_apigatewayv2_api" "http_api_ap_south_1" {
 }
 
 resource "aws_apigatewayv2_vpc_link" "http_api_ap_south_1" {
-  provider    = aws.ap_south_1
-  name        = "xelta-http-api-${var.environment}-ap-south-1-vpclink"
-  subnet_ids  = module.vpc_ap_south_1.private_subnet_ids
+  provider           = aws.ap_south_1
+  name               = "xelta-http-api-${var.environment}-ap-south-1-vpclink"
+  subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
   security_group_ids = [aws_security_group.http_api_vpclink_sg_ap_south_1.id]
 }
 
@@ -825,10 +861,10 @@ resource "aws_apigatewayv2_integration" "http_api_ap_south_1" {
 }
 
 resource "aws_apigatewayv2_route" "http_api_ap_south_1" {
-  provider    = aws.ap_south_1
-  api_id      = aws_apigatewayv2_api.http_api_ap_south_1.id
-  route_key   = "ANY /{proxy+}"
-  target      = "integrations/${aws_apigatewayv2_integration.http_api_ap_south_1.id}"
+  provider  = aws.ap_south_1
+  api_id    = aws_apigatewayv2_api.http_api_ap_south_1.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.http_api_ap_south_1.id}"
 }
 
 resource "aws_apigatewayv2_stage" "http_api_ap_south_1" {

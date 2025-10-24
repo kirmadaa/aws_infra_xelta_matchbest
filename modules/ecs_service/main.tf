@@ -75,6 +75,11 @@ resource "aws_ecs_task_definition" "frontend" {
       }
     }
   ])
+
+  # --- ADDED PER REQUEST ---
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 resource "aws_ecs_service" "frontend" {
@@ -94,6 +99,11 @@ resource "aws_ecs_service" "frontend" {
     target_group_arn = aws_lb_target_group.frontend_http.arn # Points to new ALB TG
     container_name   = "frontend"
     container_port   = 3000
+  }
+
+  # --- ADDED PER REQUEST ---
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -130,6 +140,11 @@ resource "aws_ecs_task_definition" "backend" {
       }
     }
   ])
+
+  # --- ADDED PER REQUEST ---
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 resource "aws_ecs_service" "backend" {
@@ -149,6 +164,11 @@ resource "aws_ecs_service" "backend" {
     target_group_arn = aws_lb_target_group.backend_tcp.arn # Points to NLB TG
     container_name   = "backend"
     container_port   = 5000
+  }
+
+  # --- ADDED PER REQUEST ---
+  lifecycle {
+    ignore_changes = all
   }
 }
 
@@ -292,13 +312,11 @@ resource "aws_security_group" "alb_sg" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
     prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
-
-
 
   egress {
     from_port   = 0
