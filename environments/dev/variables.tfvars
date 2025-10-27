@@ -18,13 +18,21 @@ enable_redis          = true
 
 # Container Images
 frontend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:us-east-1-0980ebb0cf6b389f955ad37d24a2fc3e368bd26e"
-  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:eu-central-1-0980ebb0cf6b389f955ad37d24a2fc3e368bd26e"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-0980ebb0cf6b389f955ad37d24a2fc3e368bd26e"
+  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:us-east-1-ca15a916ed6ee7c652a8ffadecb40992c15b5288"
+  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:eu-central-1-ca15a916ed6ee7c652a8ffadecb40992c15b5288"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-ca15a916ed6ee7c652a8ffadecb40992c15b5288"
 }
 backend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:us-east-1-7e6c79b64918d2b380351703a50c24ba4be07d24"
-  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:eu-central-1-7e6c79b64918d2b380351703a50c24ba4be07d24"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-7e6c79b64918d2b380351703a50c24ba4be07d24"
+  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:us-east-1-1be06a6810157808b4edce4376f37ec738d63cb9"
+  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:eu-central-1-1be06a6810157808b4edce4376f37ec738d63cb9"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-1be06a6810157808b4edce4376f37ec738d63cb9"
 }
 
+# --- ADDED FOR CORS ---
+# You can now control these values here
+api_gateway_cors_origins = [
+  "https://xelta.ai",
+  "https://d2cr8lfg6yh01x.cloudfront.net"
+]
+api_gateway_cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+api_gateway_cors_headers = ["Content-Type", "Authorization"]

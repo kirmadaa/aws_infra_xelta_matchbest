@@ -42,22 +42,51 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# --- START: ADDED FOR ECS EXEC ---
+resource "aws_iam_policy" "ecs_exec" {
+  name        = "xelta-${var.environment}-${var.region}-ecs-exec-policy"
+  description = "Allow ECS tasks to be accessed via ECS Exec"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_exec" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = aws_iam_policy.ecs_exec.arn
+}
+# --- END: ADDED FOR ECS EXEC ---
+
+
 # --- Frontend Service (ALB) ---
 
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "xelta-${var.environment}-frontend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 1024 # Increased
-  memory                   = 2048 # Increased
+  cpu                      = 256
+  memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([
     {
       name      = "frontend"
       image     = var.frontend_image
-      cpu       = 50
-      memory    = 128
+      cpu       = 100
+      memory    = 256
       essential = true
       portMappings = [
         {
@@ -75,35 +104,29 @@ resource "aws_ecs_task_definition" "frontend" {
       }
     }
   ])
-
-  # --- ADDED PER REQUEST ---
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 resource "aws_ecs_service" "frontend" {
-  name            = "xelta-${var.environment}-frontend"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  launch_type     = "FARGATE"
-  desired_count   = 2
+  name                   = "xelta-${var.environment}-frontend"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.frontend.arn
+  launch_type            = "FARGATE"
+  desired_count          = 2
+  enable_execute_command = true
+
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   network_configuration {
     subnets         = var.private_subnet_ids
-    security_groups = [aws_security_group.ecs_service.id] # Shares SG with backend
+    security_groups = [aws_security_group.ecs_service.id]
     assign_public_ip = false
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.frontend_http.arn # Points to new ALB TG
+    target_group_arn = aws_lb_target_group.frontend_http.arn
     container_name   = "frontend"
     container_port   = 3000
-  }
-
-  # --- ADDED PER REQUEST ---
-  lifecycle {
-    ignore_changes = all
   }
 }
 
@@ -113,9 +136,10 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "xelta-${var.environment}-backend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 1024 # Increased
-  memory                   = 2048 # Increased
+  cpu                      = 256
+  memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([
     {
@@ -140,35 +164,29 @@ resource "aws_ecs_task_definition" "backend" {
       }
     }
   ])
-
-  # --- ADDED PER REQUEST ---
-  lifecycle {
-    ignore_changes = all
-  }
 }
 
 resource "aws_ecs_service" "backend" {
-  name            = "xelta-${var.environment}-backend"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  launch_type     = "FARGATE"
-  desired_count   = 2
+  name                   = "xelta-${var.environment}-backend"
+  cluster                = aws_ecs_cluster.main.id
+  task_definition        = aws_ecs_task_definition.backend.arn
+  launch_type            = "FARGATE"
+  desired_count          = 2
+  enable_execute_command = true
+
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   network_configuration {
     subnets         = var.private_subnet_ids
-    security_groups = [aws_security_group.ecs_service.id] # Shares SG with frontend
+    security_groups = [aws_security_group.ecs_service.id]
     assign_public_ip = false
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.backend_tcp.arn # Points to NLB TG
+    target_group_arn = aws_lb_target_group.backend_tcp.arn
     container_name   = "backend"
     container_port   = 5000
-  }
-
-  # --- ADDED PER REQUEST ---
-  lifecycle {
-    ignore_changes = all
   }
 }
 
@@ -193,7 +211,7 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value = 60 # Adjusted
+    target_value = 60
   }
 }
 
@@ -216,7 +234,7 @@ resource "aws_appautoscaling_policy" "backend_cpu" {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    target_value = 60 # Adjusted
+    target_value = 60
   }
 }
 
@@ -225,7 +243,7 @@ resource "aws_appautoscaling_policy" "backend_cpu" {
 # --- FIX: NEW Application Load Balancer (ALB) for Frontend ---
 resource "aws_lb" "frontend_alb" {
   name               = "xl-fe-${var.environment}-${var.region}"
-  internal           = false # CDN will connect to it privately
+  internal           = false
   load_balancer_type = "application"
   subnets            = var.public_subnet_ids
   security_groups    = [aws_security_group.alb_sg.id]
@@ -241,14 +259,14 @@ data "aws_ec2_managed_prefix_list" "cloudfront" {
 
 resource "aws_lb_target_group" "frontend_http" {
   name_prefix = "xl-f-"
-  port        = 3000 # Matches frontend containerPort
+  port        = 3000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
 
   health_check {
     protocol = "HTTP"
-    path     = "/" # Assuming frontend has a root health check
+    path     = "/"
   }
 
   lifecycle {
@@ -282,7 +300,7 @@ resource "aws_lb" "backend_nlb" {
 
 resource "aws_lb_target_group" "backend_tcp" {
   name_prefix = "xl-b-"
-  port        = 5000 # Matches backend containerPort
+  port        = 5000
   protocol    = "TCP"
   vpc_id      = var.vpc_id
   target_type = "ip"
@@ -294,7 +312,7 @@ resource "aws_lb_target_group" "backend_tcp" {
 
 resource "aws_lb_listener" "backend_tcp" {
   load_balancer_arn = aws_lb.backend_nlb.arn
-  port              = 8080 # WSS API GW will connect to this port
+  port              = 8080
   protocol          = "TCP"
 
   default_action {

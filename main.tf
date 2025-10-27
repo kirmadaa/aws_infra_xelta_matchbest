@@ -156,7 +156,14 @@ resource "aws_iam_policy" "lambda_policy_us_east_1" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = ["sqs:SendMessage"]
+        # --- FIX: Added SQS permissions for Event Source Mapping ---
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = aws_sqs_queue.jobs_us_east_1.arn
       },
@@ -347,6 +354,12 @@ resource "aws_apigatewayv2_api" "http_api_us_east_1" {
   provider      = aws.us_east_1
   name          = "xelta-http-api-${var.environment}-us-east-1"
   protocol_type = "HTTP"
+  cors_configuration {
+    allow_origins     = var.api_gateway_cors_origins
+    allow_methods     = var.api_gateway_cors_methods
+    allow_headers     = var.api_gateway_cors_headers
+    allow_credentials = true
+  }
 }
 
 resource "aws_apigatewayv2_vpc_link" "http_api_us_east_1" {
@@ -456,7 +469,14 @@ resource "aws_iam_policy" "lambda_policy_eu_central_1" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = ["sqs:SendMessage"]
+        # --- FIX: Added SQS permissions for Event Source Mapping ---
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = aws_sqs_queue.jobs_eu_central_1.arn
       },
@@ -615,6 +635,12 @@ resource "aws_apigatewayv2_api" "http_api_eu_central_1" {
   provider      = aws.eu_central_1
   name          = "xelta-http-api-${var.environment}-eu-central-1"
   protocol_type = "HTTP"
+  cors_configuration {
+    allow_origins     = var.api_gateway_cors_origins
+    allow_methods     = var.api_gateway_cors_methods
+    allow_headers     = var.api_gateway_cors_headers
+    allow_credentials = true
+  }
 }
 
 resource "aws_apigatewayv2_vpc_link" "http_api_eu_central_1" {
@@ -682,7 +708,14 @@ resource "aws_iam_policy" "lambda_policy_ap_south_1" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = ["sqs:SendMessage"]
+        # --- FIX: Added SQS permissions for Event Source Mapping ---
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = aws_sqs_queue.jobs_ap_south_1.arn
       },
@@ -761,7 +794,7 @@ resource "aws_lambda_function" "worker_ap_south_1" {
   role             = aws_iam_role.lambda_exec_ap_south_1.arn
   handler          = "index.handler"
   runtime          = "nodejs16.x"
-  filename         = "lambda/worker.zip" # <-- This was missing
+  filename         = "lambda/worker.zip" # <-- FIX: This was missing
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
   vpc_config {
@@ -841,6 +874,12 @@ resource "aws_apigatewayv2_api" "http_api_ap_south_1" {
   provider      = aws.ap_south_1
   name          = "xelta-http-api-${var.environment}-ap-south-1"
   protocol_type = "HTTP"
+  cors_configuration {
+    allow_origins     = var.api_gateway_cors_origins
+    allow_methods     = var.api_gateway_cors_methods
+    allow_headers     = var.api_gateway_cors_headers
+    allow_credentials = true
+  }
 }
 
 resource "aws_apigatewayv2_vpc_link" "http_api_ap_south_1" {

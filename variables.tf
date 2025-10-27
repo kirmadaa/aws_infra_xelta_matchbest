@@ -73,3 +73,21 @@ variable "backend_images" {
     "ap-south-1"   = "nginx:latest"
   }
 }
+
+variable "api_gateway_cors_origins" {
+  description = "List of allowed origins for the HTTP API Gateway (e.g., [\"https://xelta.ai\"]) - must include 'https://'"
+  type        = list(string)
+  default     = []
+}
+
+variable "api_gateway_cors_methods" {
+  description = "List of allowed methods for the HTTP API Gateway (e.g., [\"GET\", \"POST\"] or [\"*\"])"
+  type        = list(string)
+  default     = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+}
+
+variable "api_gateway_cors_headers" {
+  description = "List of allowed headers for the HTTP API Gateway (e.g., [\"Content-Type\", \"Authorization\"] or [\"*\"])"
+  type        = list(string)
+  default     = ["*"]
+}
