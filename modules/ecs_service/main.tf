@@ -7,6 +7,14 @@ resource "aws_cloudwatch_log_group" "frontend" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "xray" {
+  name              = "/aws/ecs/xelta-${var.environment}-xray-${var.region}"
+  retention_in_days = var.cloudwatch_log_retention_days
+  tags = {
+    Environment = var.environment
+  }
+}
+
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/aws/ecs/xelta-${var.environment}-backend-${var.region}"
   retention_in_days = var.cloudwatch_log_retention_days
@@ -109,6 +117,33 @@ resource "aws_ecs_task_definition" "frontend" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
+      environment = [
+        {
+          name  = "AWS_XRAY_DAEMON_ADDRESS"
+          value = "127.0.0.1:2000"
+        }
+      ]
+    },
+    {
+      name      = "xray-daemon"
+      image     = "amazon/aws-xray-daemon:3.x"
+      cpu       = 32
+      memory    = 256
+      essential = true
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.xray.name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "xray"
+        }
+      }
     }
   ])
 }
@@ -167,6 +202,33 @@ resource "aws_ecs_task_definition" "backend" {
           "awslogs-group"         = aws_cloudwatch_log_group.backend.name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "ecs"
+        }
+      }
+      environment = [
+        {
+          name  = "AWS_XRAY_DAEMON_ADDRESS"
+          value = "127.0.0.1:2000"
+        }
+      ]
+    },
+    {
+      name      = "xray-daemon"
+      image     = "amazon/aws-xray-daemon:3.x"
+      cpu       = 32
+      memory    = 256
+      essential = true
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.xray.name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "xray"
         }
       }
     }
