@@ -29,3 +29,19 @@ output "redis_endpoint_ap_south_1" {
   description = "Redis endpoint in ap-south-1"
   value       = var.enable_redis ? module.redis_ap_south_1[0].redis_endpoint : "Redis disabled"
 }
+
+# WebSocket API Endpoints
+output "websocket_api_endpoint_us_east_1" {
+  description = "WebSocket API endpoint in us-east-1"
+  value       = var.enable_websocket_api ? module.websocket_api_gateway_us_east_1[0].api_endpoint : "WebSocket API disabled"
+}
+
+output "websocket_api_endpoint_eu_central_1" {
+  description = "WebSocket API endpoint in eu-central-1"
+  value       = var.enable_websocket_api ? module.websocket_api_gateway_eu_central_1[0].api_endpoint : "WebSocket API disabled"
+}
+
+output "websocket_api_endpoint_ap_south_1" {
+  description = "WebSocket API endpoint in ap-south-1"
+  value       = var.enable_websocket_api ? module.websocket_api_gateway_ap_south_1[0].api_endpoint : "WebSocket API disabled"
+}

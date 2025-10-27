@@ -47,3 +47,29 @@ variable "enable_redis" {
   type        = bool
   default     = true
 }
+
+variable "enable_websocket_api" {
+  description = "Enable WebSocket API Gateway deployment"
+  type        = bool
+  default     = true
+}
+
+variable "frontend_images" {
+  description = "Docker images for the frontend service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
+variable "backend_images" {
+  description = "Docker images for the backend service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
