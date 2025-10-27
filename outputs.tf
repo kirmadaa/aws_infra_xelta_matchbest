@@ -45,3 +45,21 @@ output "websocket_api_endpoint_ap_south_1" {
   description = "WebSocket API endpoint in ap-south-1"
   value       = var.enable_websocket_api ? module.websocket_api_gateway_ap_south_1[0].api_endpoint : "WebSocket API disabled"
 }
+
+# --- ADD THESE ---
+
+# HTTP API Gateway Endpoints
+output "http_api_endpoint_us_east_1" {
+  description = "HTTP API endpoint in us-east-1"
+  value       = aws_apigatewayv2_api.http_api_us_east_1.api_endpoint
+}
+
+output "http_api_endpoint_eu_central_1" {
+  description = "HTTP API endpoint in eu-central-1"
+  value       = aws_apigatewayv2_api.http_api_eu_central_1.api_endpoint
+}
+
+output "http_api_endpoint_ap_south_1" {
+  description = "HTTP API endpoint in ap-south-1"
+  value       = aws_apigatewayv2_api.http_api_ap_south_1.api_endpoint
+}

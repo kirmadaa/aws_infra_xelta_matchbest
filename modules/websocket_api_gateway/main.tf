@@ -110,7 +110,16 @@ resource "aws_apigatewayv2_stage" "main" {
     })
   }
 
-  depends_on = [aws_api_gateway_account.main]
+  # --- FIX: Make the stage depend on all routes ---
+  # This enforces the correct creation and deletion order
+  # to prevent the ConflictException.
+  depends_on = [
+    aws_api_gateway_account.main,
+    aws_apigatewayv2_route.connect,
+    aws_apigatewayv2_route.disconnect,
+    aws_apigatewayv2_route.default,
+    aws_apigatewayv2_route.custom
+  ]
 }
 
 # CloudWatch Log Group for API Gateway
