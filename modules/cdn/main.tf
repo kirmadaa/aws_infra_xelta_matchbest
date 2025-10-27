@@ -1,6 +1,6 @@
 # modules/cdn/main.tf
 
-# --- START: Lambda@Edge for Geo-Routing (FIXED) ---
+# --- Lambda@Edge IAM Role ---
 resource "aws_iam_role" "lambda_edge" {
   name = "xelta-${var.environment}-lambda-edge-role"
   assume_role_policy = jsonencode({
@@ -20,6 +20,7 @@ resource "aws_iam_role" "lambda_edge" {
     Environment = var.environment
   }
 }
+
 resource "aws_iam_role_policy" "lambda_edge_logs" {
   name = "xelta-${var.environment}-lambda-edge-logging"
   role = aws_iam_role.lambda_edge.id
@@ -39,57 +40,116 @@ resource "aws_iam_role_policy" "lambda_edge_logs" {
   })
 }
 
-# --- FIXED: Lambda@Edge Function Now Routes to Correct Origins ---
+# --- CORRECTED Lambda@Edge Function ---
 data "archive_file" "lambda_edge_zip" {
   type = "zip"
   source {
     content = <<-EOT
 'use strict';
+
 exports.handler = (event, context, callback) => {
     const request = event.Records[0].cf.request;
+    
     try {
-        const headers = request.headers;
-        
-        // Map continents to origin IDs (must match CloudFront origin_id)
+        // Continent to region mapping (must match your origin IDs)
         const regionMapping = {
             'EU': 'eu-central-1',
             'AS': 'ap-south-1',
             'NA': 'us-east-1',
             'SA': 'us-east-1',
             'OC': 'ap-south-1',
-            'AF': 'eu-central-1',
+            'AF': 'eu-central-1'
         };
         
+        // Country to continent mapping
         const countryToContinent = {
-            'DE': 'EU', 'FR': 'EU', 'GB': 'EU', 'IT': 'EU', 'ES': 'EU', 'PL': 'EU', 'RO': 'EU', 'NL': 'EU', 'BE': 'EU', 'GR': 'EU', 'CZ': 'EU', 'PT': 'EU', 'SE': 'EU', 'HU': 'EU', 'AT': 'EU', 'CH': 'EU', 'BG': 'EU', 'DK': 'EU', 'FI': 'EU', 'SK': 'EU', 'IE': 'EU', 'HR': 'EU', 'LT': 'EU', 'SI': 'EU', 'LV': 'EU', 'EE': 'EU', 'CY': 'EU', 'LU': 'EU', 'MT': 'EU', 'IS': 'EU', 'NO': 'EU', 'RS': 'EU', 'BA': 'EU', 'MK': 'EU', 'AL': 'EU',
-            'IN': 'AS', 'CN': 'AS', 'JP': 'AS', 'KR': 'AS', 'ID': 'AS', 'PK': 'AS', 'BD': 'AS', 'PH': 'AS', 'VN': 'AS', 'TR': 'AS', 'IR': 'AS', 'TH': 'AS', 'MM': 'AS', 'SA': 'AS', 'MY': 'AS', 'UZ': 'AS', 'IQ': 'AS', 'AF': 'AS', 'NP': 'AS', 'YE': 'AS', 'KZ': 'AS', 'KH': 'AS', 'JO': 'AS', 'AE': 'AS', 'IL': 'AS', 'HK': 'AS', 'LA': 'AS', 'SG': 'AS', 'OM': 'AS', 'KW': 'AS', 'QA': 'AS', 'BH': 'AS', 'MN': 'AS', 'TM': 'AS', 'GE': 'AS', 'AM': 'AS', 'AZ': 'AS',
-            'US': 'NA', 'CA': 'NA', 'MX': 'NA',
-            'BR': 'SA', 'CO': 'SA', 'AR': 'SA', 'PE': 'SA', 'VE': 'SA', 'CL': 'SA', 'EC': 'SA', 'BO': 'SA', 'PY': 'SA', 'UY': 'SA',
-            'AU': 'OC', 'NZ': 'OC', 'PG': 'OC', 'FJ': 'OC',
-            'NG': 'AF', 'ET': 'AF', 'EG': 'AF', 'CD': 'AF', 'TZ': 'AF', 'ZA': 'AF', 'KE': 'AF', 'UG': 'AF', 'DZ': 'AF', 'SD': 'AF', 'MA': 'AF', 'MZ': 'AF', 'GH': 'AF', 'AO': 'AF', 'CI': 'AF', 'CM': 'AF', 'NE': 'AF', 'ML': 'AF', 'MG': 'AF', 'ZM': 'AF', 'ZW': 'AF', 'SN': 'AF', 'TN': 'AF', 'GN': 'AF', 'RW': 'AF', 'BJ': 'AF', 'SO': 'AF', 'BI': 'AF', 'TG': 'AF', 'SL': 'AF', 'LR': 'AF', 'CF': 'AF', 'CG': 'AF', 'GA': 'AF', 'GW': 'AF', 'GQ': 'AF', 'SZ': 'AF', 'LS': 'AF', 'DJ': 'AF', 'KM': 'AF', 'SC': 'AF', 'CV': 'AF',
+            // Europe
+            'DE': 'EU', 'FR': 'EU', 'GB': 'EU', 'IT': 'EU', 'ES': 'EU', 'PL': 'EU', 
+            'RO': 'EU', 'NL': 'EU', 'BE': 'EU', 'GR': 'EU', 'CZ': 'EU', 'PT': 'EU',
+            'SE': 'EU', 'HU': 'EU', 'AT': 'EU', 'CH': 'EU', 'BG': 'EU', 'DK': 'EU',
+            'FI': 'EU', 'SK': 'EU', 'IE': 'EU', 'HR': 'EU', 'LT': 'EU', 'SI': 'EU',
+            'LV': 'EU', 'EE': 'EU', 'CY': 'EU', 'LU': 'EU', 'MT': 'EU', 'IS': 'EU',
+            'NO': 'EU', 'RS': 'EU', 'BA': 'EU', 'MK': 'EU', 'AL': 'EU', 'ME': 'EU',
+            'XK': 'EU', 'MD': 'EU', 'UA': 'EU', 'BY': 'EU', 'RU': 'EU',
+            
+            // Asia
+            'IN': 'AS', 'CN': 'AS', 'JP': 'AS', 'KR': 'AS', 'ID': 'AS', 'PK': 'AS',
+            'BD': 'AS', 'PH': 'AS', 'VN': 'AS', 'TR': 'AS', 'IR': 'AS', 'TH': 'AS',
+            'MM': 'AS', 'SA': 'AS', 'MY': 'AS', 'UZ': 'AS', 'IQ': 'AS', 'AF': 'AS',
+            'NP': 'AS', 'YE': 'AS', 'KZ': 'AS', 'KH': 'AS', 'JO': 'AS', 'AE': 'AS',
+            'IL': 'AS', 'HK': 'AS', 'LA': 'AS', 'SG': 'AS', 'OM': 'AS', 'KW': 'AS',
+            'QA': 'AS', 'BH': 'AS', 'MN': 'AS', 'TM': 'AS', 'GE': 'AS', 'AM': 'AS',
+            'AZ': 'AS', 'SY': 'AS', 'LB': 'AS', 'PS': 'AS', 'BT': 'AS', 'MV': 'AS',
+            'LK': 'AS', 'TJ': 'AS', 'KG': 'AS', 'TW': 'AS', 'MO': 'AS', 'BN': 'AS',
+            'TL': 'AS',
+            
+            // North America
+            'US': 'NA', 'CA': 'NA', 'MX': 'NA', 'GT': 'NA', 'CU': 'NA', 'DO': 'NA',
+            'HT': 'NA', 'HN': 'NA', 'NI': 'NA', 'CR': 'NA', 'PA': 'NA', 'BZ': 'NA',
+            'SV': 'NA', 'JM': 'NA', 'TT': 'NA', 'BS': 'NA', 'BB': 'NA', 'LC': 'NA',
+            'GD': 'NA', 'VC': 'NA', 'AG': 'NA', 'DM': 'NA', 'KN': 'NA',
+            
+            // South America
+            'BR': 'SA', 'AR': 'SA', 'CO': 'SA', 'PE': 'SA', 'VE': 'SA', 'CL': 'SA',
+            'EC': 'SA', 'BO': 'SA', 'PY': 'SA', 'UY': 'SA', 'GY': 'SA', 'SR': 'SA',
+            'GF': 'SA',
+            
+            // Oceania
+            'AU': 'OC', 'NZ': 'OC', 'PG': 'OC', 'FJ': 'OC', 'SB': 'OC', 'VU': 'OC',
+            'NC': 'OC', 'PF': 'OC', 'WS': 'OC', 'KI': 'OC', 'FM': 'OC', 'TO': 'OC',
+            'MH': 'OC', 'PW': 'OC', 'CK': 'OC', 'NU': 'OC', 'TK': 'OC', 'TV': 'OC',
+            'NR': 'OC',
+            
+            // Africa
+            'NG': 'AF', 'ET': 'AF', 'EG': 'AF', 'CD': 'AF', 'TZ': 'AF', 'ZA': 'AF',
+            'KE': 'AF', 'UG': 'AF', 'DZ': 'AF', 'SD': 'AF', 'MA': 'AF', 'AO': 'AF',
+            'MZ': 'AF', 'GH': 'AF', 'MG': 'AF', 'CM': 'AF', 'CI': 'AF', 'NE': 'AF',
+            'BF': 'AF', 'ML': 'AF', 'MW': 'AF', 'ZM': 'AF', 'SN': 'AF', 'SO': 'AF',
+            'TN': 'AF', 'SS': 'AF', 'TD': 'AF', 'LY': 'AF', 'LR': 'AF', 'SL': 'AF',
+            'TG': 'AF', 'CF': 'AF', 'MR': 'AF', 'ER': 'AF', 'GM': 'AF', 'BW': 'AF',
+            'GA': 'AF', 'LS': 'AF', 'GW': 'AF', 'GQ': 'AF', 'SZ': 'AF', 'DJ': 'AF',
+            'RE': 'AF', 'KM': 'AF', 'CV': 'AF', 'SC': 'AF', 'ST': 'AF'
         };
         
-        // Determine target origin based on viewer country
-        let targetOrigin = 'ap-south-1'; // Default origin
+        // Default to ap-south-1
+        let targetOriginId = 'ap-south-1';
+        let countryCode = 'Unknown';
         
-        if (headers['cloudfront-viewer-country']) {
-            const countryCode = headers['cloudfront-viewer-country'][0].value;
+        // Get country from CloudFront headers
+        if (request.headers['cloudfront-viewer-country']) {
+            countryCode = request.headers['cloudfront-viewer-country'][0].value;
             const continent = countryToContinent[countryCode];
+            
             if (continent && regionMapping[continent]) {
-                targetOrigin = regionMapping[continent];
+                targetOriginId = regionMapping[continent];
             }
         }
         
-        // --- FIXED: Set the origin field to route to the correct ALB ---
-        request.origin.custom.originId = targetOrigin;
-        
-        // Log for debugging (visible in CloudWatch)
-        console.log('Country: ' + (headers['cloudfront-viewer-country'] ? headers['cloudfront-viewer-country'][0].value : 'Unknown') + 
-                    ', Target Origin: ' + targetOrigin);
+        // CRITICAL FIX: Modify the originId, do not replace the origin object.
+        // This tells CloudFront which pre-configured origin to route to.
+        request.origin.custom.originId = targetOriginId;
+
+        // The Host header will be automatically set by CloudFront
+        // to the domainName of the *chosen* origin (e.g., your-alb.us-east-1.elb.amazonaws.com)
+        // No need to manually delete or set request.headers['host']
+
+        console.log(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            countryCode: countryCode,
+            targetOriginId: targetOriginId,
+            originalUri: request.uri,
+            userAgent: request.headers['user-agent'] ? request.headers['user-agent'][0].value : 'Unknown'
+        }));
         
         callback(null, request);
-    } catch (e) {
-        console.log('Error modifying edge request: ', e);
+        
+    } catch (error) {
+        console.error('Lambda@Edge Error:', {
+            error: error.message,
+            stack: error.stack
+        });
+        
+        // On error, let it proceed to the default origin (ap-south-1)
         callback(null, request);
     }
 };
@@ -98,7 +158,6 @@ EOT
   }
   output_path = "${path.module}/edge_router_payload.zip"
 }
-# --- END OF FIX ---
 
 resource "aws_lambda_function" "edge_router" {
   filename         = data.archive_file.lambda_edge_zip.output_path
@@ -110,23 +169,22 @@ resource "aws_lambda_function" "edge_router" {
   publish          = true
   depends_on       = [aws_iam_role_policy.lambda_edge_logs]
 }
-# --- END: Lambda@Edge for Geo-Routing ---
 
-
+# --- CloudFront Distribution ---
 resource "aws_cloudfront_distribution" "main" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "xelta-${var.environment}"
-  web_acl_id          = var.waf_web_acl_arn
+  enabled           = true
+  is_ipv6_enabled   = true
+  comment           = "xelta-${var.environment}"
+  web_acl_id        = var.waf_web_acl_arn
 
   aliases = [var.domain_name]
 
-  # Origins now point to the ALB DNS names
+  # Origins - all 3 ALBs are defined
   dynamic "origin" {
     for_each = var.origins
     content {
       domain_name = origin.value
-      origin_id   = origin.key
+      origin_id   = origin.key # e.g., "us-east-1", "eu-central-1"
 
       custom_origin_config {
         http_port              = 80
@@ -137,21 +195,21 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Default cache behavior
+  # Default cache behavior with CORRECTED Lambda@Edge
   default_cache_behavior {
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods  = ["GET", "HEAD", "OPTIONS"]
     
-    # --- CHANGED: Use ap-south-1 as default, Lambda@Edge will override via origin_id ---
-    target_origin_id = "ap-south-1"
+    # This is just the default; the Lambda will override it
+    target_origin_id = "ap-south-1" 
 
     origin_request_policy_id = aws_cloudfront_origin_request_policy.default_alb.id
     cache_policy_id          = aws_cloudfront_cache_policy.api_caching.id
 
-    viewer_protocol_policy   = "redirect-to-https"
-    compress                 = true
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
 
-    # Lambda@Edge association for geo-routing
+    # CRITICAL CHANGE: "viewer-request" event type
     lambda_function_association {
       event_type   = "viewer-request"
       lambda_arn   = aws_lambda_function.edge_router.qualified_arn
@@ -177,7 +235,7 @@ resource "aws_cloudfront_distribution" "main" {
   }
 }
 
-# Cache policy for 60-second TTL
+# Cache policy with CloudFront-Viewer-Country header
 resource "aws_cloudfront_cache_policy" "api_caching" {
   name    = "xelta-${var.environment}-api-caching-policy"
   comment = "Cache policy for API GET/HEAD requests"
@@ -189,7 +247,11 @@ resource "aws_cloudfront_cache_policy" "api_caching" {
       cookie_behavior = "none"
     }
     headers_config {
-      header_behavior = "none"
+      header_behavior = "whitelist"
+      headers {
+        # This is required so the Lambda@Edge has the header to inspect
+        items = ["CloudFront-Viewer-Country"] 
+      }
     }
     query_strings_config {
       query_string_behavior = "all"
@@ -200,12 +262,23 @@ resource "aws_cloudfront_cache_policy" "api_caching" {
 # Origin request policy for ALBs
 resource "aws_cloudfront_origin_request_policy" "default_alb" {
   name    = "xelta-${var.environment}-alb-policy"
-  comment = "Forward Cookies and Query Strings"
+  comment = "Forward Cookies, Query Strings and necessary headers"
   cookies_config {
     cookie_behavior = "all"
   }
   headers_config {
-    header_behavior = "none"
+    header_behavior = "whitelist"
+    headers {
+      items = [
+        # Forward the country header to the origin ALB
+        "CloudFront-Viewer-Country", 
+        "User-Agent", 
+        "Accept", 
+        "Accept-Language",
+        # "Accept-Encoding", # <-- Correctly commented out
+        "Content-Type"
+      ]
+    }
   }
   query_strings_config {
     query_string_behavior = "all"
