@@ -1,13 +1,15 @@
 # --- FIX: Added Log Groups for Frontend and Backend ---
 resource "aws_cloudwatch_log_group" "frontend" {
-  name = "/aws/ecs/xelta-${var.environment}-frontend-${var.region}"
+  name              = "/aws/ecs/xelta-${var.environment}-frontend-${var.region}"
+  retention_in_days = var.cloudwatch_log_retention_days
   tags = {
     Environment = var.environment
   }
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
-  name = "/aws/ecs/xelta-${var.environment}-backend-${var.region}"
+  name              = "/aws/ecs/xelta-${var.environment}-backend-${var.region}"
+  retention_in_days = var.cloudwatch_log_retention_days
   tags = {
     Environment = var.environment
   }
@@ -17,6 +19,11 @@ resource "aws_cloudwatch_log_group" "backend" {
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "xelta-${var.environment}-${var.region}"
+
+  setting {
+    name  = "containerInsights"
+    value = var.enable_container_insights ? "enabled" : "disabled"
+  }
 }
 
 # IAM Role for ECS Task Execution
@@ -76,8 +83,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "xelta-${var.environment}-frontend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 256
-  memory                   = 512
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task_execution.arn
 
@@ -85,8 +92,8 @@ resource "aws_ecs_task_definition" "frontend" {
     {
       name      = "frontend"
       image     = var.frontend_image
-      cpu       = 100
-      memory    = 256
+      cpu       = var.task_cpu
+      memory    = var.task_memory
       essential = true
       portMappings = [
         {
@@ -136,8 +143,8 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "xelta-${var.environment}-backend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 256
-  memory                   = 512
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task_execution.arn
 
@@ -145,8 +152,8 @@ resource "aws_ecs_task_definition" "backend" {
     {
       name      = "backend"
       image     = var.backend_image
-      cpu       = 256
-      memory    = 512
+      cpu       = var.task_cpu
+      memory    = var.task_memory
       essential = true
       portMappings = [
         {

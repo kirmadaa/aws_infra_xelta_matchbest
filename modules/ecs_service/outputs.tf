@@ -15,6 +15,16 @@ output "backend_nlb_listener_arn" {
   value       = aws_lb_listener.backend_tcp.arn
 }
 
+output "ecs_cluster_name" {
+  description = "The name of the ECS cluster"
+  value       = aws_ecs_cluster.main.name
+}
+
+output "frontend_alb_arn_suffix" {
+  description = "The ARN suffix of the frontend Application Load Balancer"
+  value       = aws_lb.frontend_alb.arn_suffix
+}
+
 output "backend_nlb_arn" {
   description = "ARN of the backend NLB"
   value       = aws_lb.backend_nlb.arn

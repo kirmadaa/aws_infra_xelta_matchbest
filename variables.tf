@@ -1,93 +1,123 @@
+# GLOBAL & ENVIRONMENT
 variable "environment" {
-  description = "Environment name (dev, uat, prod)"
+  description = "The deployment environment (e.g., dev, uat, prod)."
   type        = string
-
-  validation {
-    condition     = contains(["dev", "uat", "prod"], var.environment)
-    error_message = "Environment must be dev, uat, or prod."
-  }
 }
 
 variable "domain_name" {
-  description = "Root domain name managed in Route53"
+  description = "The root domain name for the application (e.g., xelta.ai)."
   type        = string
-  default     = "xelta.ai"
 }
 
-variable "regions" {
-  description = "AWS regions for multi-region deployment"
-  type        = list(string)
-  default     = ["us-east-1", "eu-central-1", "ap-south-1"]
+# REGIONAL CONFIGURATION
+variable "regional_configs" {
+  description = "A map of configurations for each AWS region to be deployed."
+  type = map(object({
+    region             = string
+    availability_zones = list(string)
+    vpc_cidr           = string
+    frontend_image     = string
+    backend_image      = string
+    single_nat_gateway = bool
+  }))
 }
 
-variable "vpc_cidr_blocks" {
-  description = "CIDR blocks for VPCs in each region"
-  type        = map(string)
-  default = {
-    "us-east-1"    = "10.0.0.0/16"
-    "eu-central-1" = "10.1.0.0/16"
-    "ap-south-1"   = "10.2.0.0/16"
-  }
+# ECS & IMAGES
+variable "ecs_task_cpu" {
+  description = "CPU units to allocate for each ECS task."
+  type        = number
+  default     = 256
+}
+
+variable "ecs_task_memory" {
+  description = "Memory (in MiB) to allocate for each ECS task."
+  type        = number
+  default     = 512
+}
+
+# REDIS
+variable "enable_redis" {
+  description = "Flag to enable or disable the deployment of ElastiCache Redis."
+  type        = bool
+  default     = true
 }
 
 variable "redis_node_type" {
-  description = "Node type for ElastiCache Redis"
+  description = "The instance type for the Redis cache nodes."
   type        = string
   default     = "cache.t3.micro"
 }
 
 variable "redis_num_cache_nodes" {
-  description = "Number of cache nodes in Redis cluster"
+  description = "The number of nodes in the Redis cluster."
   type        = number
   default     = 1
 }
 
-variable "enable_redis" {
-  description = "Enable ElastiCache Redis deployment"
-  type        = bool
-  default     = true
-}
-
-variable "enable_websocket_api" {
-  description = "Enable WebSocket API Gateway deployment"
-  type        = bool
-  default     = true
-}
-
-variable "frontend_images" {
-  description = "Docker images for the frontend service, keyed by region"
-  type        = map(string)
-  default = {
-    "us-east-1"    = "nginx:latest"
-    "eu-central-1" = "nginx:latest"
-    "ap-south-1"   = "nginx:latest"
-  }
-}
-
-variable "backend_images" {
-  description = "Docker images for the backend service, keyed by region"
-  type        = map(string)
-  default = {
-    "us-east-1"    = "nginx:latest"
-    "eu-central-1" = "nginx:latest"
-    "ap-south-1"   = "nginx:latest"
-  }
-}
-
+# API GATEWAY
 variable "api_gateway_cors_origins" {
-  description = "List of allowed origins for the HTTP API Gateway (e.g., [\"https://xelta.ai\"]) - must include 'https://'"
+  description = "A list of allowed origins for the HTTP API Gateway CORS configuration."
   type        = list(string)
   default     = []
 }
 
 variable "api_gateway_cors_methods" {
-  description = "List of allowed methods for the HTTP API Gateway (e.g., [\"GET\", \"POST\"] or [\"*\"])"
+  description = "A list of allowed methods for the HTTP API Gateway CORS configuration."
   type        = list(string)
-  default     = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  default     = ["*"]
 }
 
 variable "api_gateway_cors_headers" {
-  description = "List of allowed headers for the HTTP API Gateway (e.g., [\"Content-Type\", \"Authorization\"] or [\"*\"])"
+  description = "A list of allowed headers for the HTTP API Gateway CORS configuration."
   type        = list(string)
   default     = ["*"]
+}
+
+# LAMBDA
+variable "lambda_memory_size" {
+  description = "The amount of memory (in MiB) to allocate for Lambda functions."
+  type        = number
+  default     = 128
+}
+
+# OBSERVABILITY
+variable "enable_container_insights" {
+  description = "Flag to enable CloudWatch Container Insights for the ECS cluster."
+  type        = bool
+  default     = true
+}
+
+variable "enable_lambda_insights" {
+  description = "Flag to enable CloudWatch Lambda Insights for Lambda functions."
+  type        = bool
+  default     = true
+}
+
+variable "cloudwatch_log_retention_days" {
+  description = "The number of days to retain CloudWatch logs."
+  type        = number
+  default     = 30
+}
+
+variable "alarm_sns_topic_arn" {
+  description = "The ARN of the SNS topic to which CloudWatch alarm notifications will be sent."
+  type        = string
+}
+
+variable "alarm_evaluation_periods" {
+  description = "The number of periods over which to evaluate a CloudWatch alarm."
+  type        = number
+  default     = 1
+}
+
+variable "alarm_period_seconds" {
+  description = "The period (in seconds) over which to evaluate a CloudWatch alarm."
+  type        = number
+  default     = 60
+}
+
+variable "alarm_threshold" {
+  description = "The threshold for CloudWatch alarms."
+  type        = number
+  default     = 1
 }

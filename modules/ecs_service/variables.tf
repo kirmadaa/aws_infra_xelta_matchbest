@@ -33,6 +33,27 @@ variable "backend_image" {
   type        = string
 }
 
+variable "task_cpu" {
+  description = "CPU units for the ECS tasks"
+  type        = number
+}
+
+variable "task_memory" {
+  description = "Memory (in MiB) for the ECS tasks"
+  type        = number
+}
+
+variable "enable_container_insights" {
+  description = "Enable CloudWatch Container Insights for the ECS cluster"
+  type        = bool
+  default     = true
+}
+
+variable "cloudwatch_log_retention_days" {
+  description = "Number of days to retain CloudWatch logs"
+  type        = number
+}
+
 variable "http_api_vpclink_sg_id" {
   description = "The ID of the security group for the HTTP API Gateway VPC Link"
   type        = string

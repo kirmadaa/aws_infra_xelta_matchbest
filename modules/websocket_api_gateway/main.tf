@@ -110,6 +110,8 @@ resource "aws_apigatewayv2_stage" "main" {
     })
   }
 
+  tracing_enabled = true
+
   # --- FIX: Make the stage depend on all routes ---
   # This enforces the correct creation and deletion order
   # to prevent the ConflictException.
@@ -125,7 +127,7 @@ resource "aws_apigatewayv2_stage" "main" {
 # CloudWatch Log Group for API Gateway
 resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/xelta-websocket-${var.environment}-${var.region}"
-  retention_in_days = 30
+  retention_in_days = var.cloudwatch_log_retention_days
 
   tags = {
     Name        = "xelta-websocket-${var.environment}-apigw-logs-${var.region}"
