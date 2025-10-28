@@ -168,7 +168,13 @@ resource "aws_iam_policy" "lambda_policy_us_east_1" {
         Resource = aws_sqs_queue.jobs_us_east_1.arn
       },
       {
-        Action   = ["dynamodb:PutItem"]
+        # --- FIX: Added GetItem and UpdateItem permissions ---
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = aws_dynamodb_table.jobs_us_east_1.arn
       },
@@ -327,12 +333,12 @@ module "redis_us_east_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.us_east_1 }
 
-  environment                = var.environment
-  region                     = "us-east-1"
-  vpc_id                     = module.vpc_us_east_1.vpc_id
-  private_subnet_ids         = module.vpc_us_east_1.private_subnet_ids
-  node_type                  = var.redis_node_type
-  num_cache_nodes            = var.redis_num_cache_nodes
+  environment                  = var.environment
+  region                       = "us-east-1"
+  vpc_id                       = module.vpc_us_east_1.vpc_id
+  private_subnet_ids           = module.vpc_us_east_1.private_subnet_ids
+  node_type                    = var.redis_node_type
+  num_cache_nodes              = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_us_east_1.service_security_group_id]
 }
 
@@ -481,7 +487,13 @@ resource "aws_iam_policy" "lambda_policy_eu_central_1" {
         Resource = aws_sqs_queue.jobs_eu_central_1.arn
       },
       {
-        Action   = ["dynamodb:PutItem"]
+        # --- FIX: Added GetItem and UpdateItem permissions ---
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = aws_dynamodb_table.jobs_eu_central_1.arn
       },
@@ -608,12 +620,12 @@ module "redis_eu_central_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.eu_central_1 }
 
-  environment                = var.environment
-  region                     = "eu-central-1"
-  vpc_id                     = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
-  node_type                  = var.redis_node_type
-  num_cache_nodes            = var.redis_num_cache_nodes
+  environment                  = var.environment
+  region                       = "eu-central-1"
+  vpc_id                       = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids           = module.vpc_eu_central_1.private_subnet_ids
+  node_type                    = var.redis_node_type
+  num_cache_nodes              = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_eu_central_1.service_security_group_id]
 }
 
@@ -720,7 +732,13 @@ resource "aws_iam_policy" "lambda_policy_ap_south_1" {
         Resource = aws_sqs_queue.jobs_ap_south_1.arn
       },
       {
-        Action   = ["dynamodb:PutItem"]
+        # --- FIX: Added GetItem and UpdateItem permissions ---
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ]
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = aws_dynamodb_table.jobs_ap_south_1.arn
       },
@@ -847,12 +865,12 @@ module "redis_ap_south_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.ap_south_1 }
 
-  environment                = var.environment
-  region                     = "ap-south-1"
-  vpc_id                     = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
-  node_type                  = var.redis_node_type
-  num_cache_nodes            = var.redis_num_cache_nodes
+  environment                  = var.environment
+  region                       = "ap-south-1"
+  vpc_id                       = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids           = module.vpc_ap_south_1.private_subnet_ids
+  node_type                    = var.redis_node_type
+  num_cache_nodes              = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_ap_south_1.service_security_group_id]
 }
 

@@ -18,14 +18,14 @@ enable_redis          = true
 
 # Container Images
 frontend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:us-east-1-ca15a916ed6ee7c652a8ffadecb40992c15b5288"
-  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:eu-central-1-ca15a916ed6ee7c652a8ffadecb40992c15b5288"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-ca15a916ed6ee7c652a8ffadecb40992c15b5288"
+  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:us-east-1-726ed5208b3bcfe95fc59449e3a84df46b11a17f"
+  "eu-central-1" = "8811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:eu-central-1-726ed5208b3bcfe95fc59449e3a84df46b11a17f"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-726ed5208b3bcfe95fc59449e3a84df46b11a17f"
 }
 backend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:us-east-1-1be06a6810157808b4edce4376f37ec738d63cb9"
-  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:eu-central-1-1be06a6810157808b4edce4376f37ec738d63cb9"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-1be06a6810157808b4edce4376f37ec738d63cb9"
+  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:us-east-1-d4a23af22b52f77942353bf1573bf5ca6b3c858a"
+  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:eu-central-1-d4a23af22b52f77942353bf1573bf5ca6b3c858a"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-d4a23af22b52f77942353bf1573bf5ca6b3c858a"
 }
 
 # --- ADDED FOR CORS ---
