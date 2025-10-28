@@ -19,6 +19,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs_lifecycle" {
     id     = "auto-delete-old-logs"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = 30
     }
@@ -432,9 +434,9 @@ resource "aws_apigatewayv2_stage" "http_api_us_east_1" {
   auto_deploy = true
 
   default_route_settings {
+    data_trace_enabled     = true
     throttling_burst_limit = 5000
     throttling_rate_limit  = 10000
-    tracing_enabled        = true
   }
 
   access_log_settings {
@@ -748,9 +750,9 @@ resource "aws_apigatewayv2_stage" "http_api_eu_central_1" {
   auto_deploy = true
 
   default_route_settings {
+    data_trace_enabled     = true
     throttling_burst_limit = 5000
     throttling_rate_limit  = 10000
-    tracing_enabled        = true
   }
 
   access_log_settings {
@@ -1022,9 +1024,9 @@ resource "aws_apigatewayv2_stage" "http_api_ap_south_1" {
   auto_deploy = true
 
   default_route_settings {
+    data_trace_enabled     = true
     throttling_burst_limit = 5000
     throttling_rate_limit  = 10000
-    tracing_enabled        = true
   }
 
   access_log_settings {
