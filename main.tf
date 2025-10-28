@@ -9,10 +9,15 @@ data "aws_route53_zone" "main" {
 resource "aws_s3_bucket" "access_logs" {
   provider = aws.us_east_1
   bucket   = "xelta-tf-access-logs"
+}
 
-  lifecycle_rule {
-    id      = "auto-delete-old-logs"
-    enabled = true
+resource "aws_s3_bucket_lifecycle_configuration" "access_logs_lifecycle" {
+  provider = aws.us_east_1
+  bucket   = aws_s3_bucket.access_logs.id
+
+  rule {
+    id     = "auto-delete-old-logs"
+    status = "Enabled"
 
     expiration {
       days = 30
@@ -425,7 +430,12 @@ resource "aws_apigatewayv2_stage" "http_api_us_east_1" {
   api_id      = aws_apigatewayv2_api.http_api_us_east_1.id
   name        = "$default"
   auto_deploy = true
-  tracing_enabled = true
+
+  default_route_settings {
+    throttling_burst_limit = 5000
+    throttling_rate_limit  = 10000
+    tracing_enabled        = true
+  }
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.http_api_us_east_1.arn
@@ -736,7 +746,12 @@ resource "aws_apigatewayv2_stage" "http_api_eu_central_1" {
   api_id      = aws_apigatewayv2_api.http_api_eu_central_1.id
   name        = "$default"
   auto_deploy = true
-  tracing_enabled = true
+
+  default_route_settings {
+    throttling_burst_limit = 5000
+    throttling_rate_limit  = 10000
+    tracing_enabled        = true
+  }
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.http_api_eu_central_1.arn
@@ -1005,7 +1020,12 @@ resource "aws_apigatewayv2_stage" "http_api_ap_south_1" {
   api_id      = aws_apigatewayv2_api.http_api_ap_south_1.id
   name        = "$default"
   auto_deploy = true
-  tracing_enabled = true
+
+  default_route_settings {
+    throttling_burst_limit = 5000
+    throttling_rate_limit  = 10000
+    tracing_enabled        = true
+  }
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.http_api_ap_south_1.arn

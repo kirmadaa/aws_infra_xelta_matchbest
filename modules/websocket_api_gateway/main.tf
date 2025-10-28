@@ -94,6 +94,7 @@ resource "aws_apigatewayv2_stage" "main" {
   default_route_settings {
     throttling_burst_limit = 500
     throttling_rate_limit  = 1000
+    tracing_enabled        = true
   }
 
   access_log_settings {
@@ -109,8 +110,6 @@ resource "aws_apigatewayv2_stage" "main" {
       connectionId   = "$context.connectionId"
     })
   }
-
-  tracing_enabled = true
 
   # --- FIX: Make the stage depend on all routes ---
   # This enforces the correct creation and deletion order
