@@ -5,6 +5,21 @@ data "aws_route53_zone" "main" {
 }
 
 
+# Central Logging S3 Bucket
+resource "aws_s3_bucket" "access_logs" {
+  provider = aws.us_east_1
+  bucket   = "xelta-tf-access-logs"
+
+  lifecycle_rule {
+    id      = "auto-delete-old-logs"
+    enabled = true
+
+    expiration {
+      days = 30
+    }
+  }
+}
+
 # Global secrets (stored in us-east-1, replicated to other regions)
 module "secrets_us_east_1" {
   source    = "./modules/secrets"
@@ -47,6 +62,7 @@ module "cdn" {
 
   # ACM certificate for the CDN (must be in us-east-1)
   certificate_arn = module.route53_acm_us_east_1.certificate_arn
+  logging_bucket  = aws_s3_bucket.access_logs.bucket_domain_name
 }
 
 # ==================================
@@ -198,6 +214,12 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_us_east_1" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_xray_access_us_east_1" {
+  provider   = aws.us_east_1
+  role       = aws_iam_role.lambda_exec_us_east_1.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_us_east_1" {
   provider         = aws.us_east_1
@@ -210,6 +232,10 @@ resource "aws_lambda_function" "connect_handler_us_east_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -232,6 +258,10 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -277,6 +307,10 @@ resource "aws_lambda_function" "worker_us_east_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -391,6 +425,18 @@ resource "aws_apigatewayv2_stage" "http_api_us_east_1" {
   api_id      = aws_apigatewayv2_api.http_api_us_east_1.id
   name        = "$default"
   auto_deploy = true
+  tracing_enabled = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.http_api_us_east_1.arn
+    format          = "$context.identity.sourceIp - - [$context.requestTime] \"$context.httpMethod $context.routeKey $context.protocol\" $context.status $context.responseLength $context.requestId"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "http_api_us_east_1" {
+  provider = aws.us_east_1
+  name     = "/aws/v2/http/${aws_apigatewayv2_api.http_api_us_east_1.name}"
+  retention_in_days = 30
 }
 
 resource "aws_security_group" "http_api_vpclink_sg_ap_south_1" {
@@ -511,6 +557,12 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_eu_central_1" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_xray_access_eu_central_1" {
+  provider   = aws.eu_central_1
+  role       = aws_iam_role.lambda_exec_eu_central_1.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_eu_central_1" {
   provider         = aws.eu_central_1
@@ -523,6 +575,10 @@ resource "aws_lambda_function" "connect_handler_eu_central_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -545,6 +601,10 @@ resource "aws_lambda_function" "start_job_handler_eu_central_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -572,6 +632,10 @@ resource "aws_lambda_function" "worker_eu_central_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -672,6 +736,18 @@ resource "aws_apigatewayv2_stage" "http_api_eu_central_1" {
   api_id      = aws_apigatewayv2_api.http_api_eu_central_1.id
   name        = "$default"
   auto_deploy = true
+  tracing_enabled = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.http_api_eu_central_1.arn
+    format          = "$context.identity.sourceIp - - [$context.requestTime] \"$context.httpMethod $context.routeKey $context.protocol\" $context.status $context.responseLength $context.requestId"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "http_api_eu_central_1" {
+  provider = aws.eu_central_1
+  name     = "/aws/v2/http/${aws_apigatewayv2_api.http_api_eu_central_1.name}"
+  retention_in_days = 30
 }
 
 
@@ -750,6 +826,12 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_ap_south_1" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_xray_access_ap_south_1" {
+  provider   = aws.ap_south_1
+  role       = aws_iam_role.lambda_exec_ap_south_1.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 # --- ConnectHandler Lambda ---
 resource "aws_lambda_function" "connect_handler_ap_south_1" {
   provider         = aws.ap_south_1
@@ -762,6 +844,10 @@ resource "aws_lambda_function" "connect_handler_ap_south_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -784,6 +870,10 @@ resource "aws_lambda_function" "start_job_handler_ap_south_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -811,6 +901,10 @@ resource "aws_lambda_function" "worker_ap_south_1" {
 
   lifecycle {
     ignore_changes = all
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
@@ -911,4 +1005,16 @@ resource "aws_apigatewayv2_stage" "http_api_ap_south_1" {
   api_id      = aws_apigatewayv2_api.http_api_ap_south_1.id
   name        = "$default"
   auto_deploy = true
+  tracing_enabled = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.http_api_ap_south_1.arn
+    format          = "$context.identity.sourceIp - - [$context.requestTime] \"$context.httpMethod $context.routeKey $context.protocol\" $context.status $context.responseLength $context.requestId"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "http_api_ap_south_1" {
+  provider = aws.ap_south_1
+  name     = "/aws/v2/http/${aws_apigatewayv2_api.http_api_ap_south_1.name}"
+  retention_in_days = 30
 }

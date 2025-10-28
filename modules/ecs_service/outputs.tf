@@ -40,3 +40,18 @@ output "worker_lambda_sg_id" {
   description = "ID of the security group for the worker lambda"
   value       = aws_security_group.worker_lambda_sg.id
 }
+
+output "cluster_name" {
+  description = "Name of the ECS cluster"
+  value       = aws_ecs_cluster.main.name
+}
+
+output "backend_service_name" {
+  description = "Name of the backend ECS service"
+  value       = aws_ecs_service.backend.name
+}
+
+output "backend_target_group_arn" {
+  description = "ARN of the backend target group"
+  value       = aws_lb_target_group.backend_tcp.arn
+}

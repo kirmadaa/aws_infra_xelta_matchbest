@@ -23,6 +23,11 @@ variable "certificate_arn" {
   type        = string
 }
 
+variable "logging_bucket" {
+  description = "Name of the S3 bucket for access logs"
+  type        = string
+}
+
 variable "waf_web_acl_arn" {
   description = "ARN of the WAF Web ACL to associate with the CDN"
   type        = string

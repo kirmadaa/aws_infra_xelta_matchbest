@@ -229,6 +229,12 @@ resource "aws_cloudfront_distribution" "main" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
+  logging_config {
+    include_cookies = false
+    bucket          = var.logging_bucket
+    prefix          = "cdn/"
+  }
+
   tags = {
     Name        = "xelta-${var.environment}-cdn"
     Environment = var.environment

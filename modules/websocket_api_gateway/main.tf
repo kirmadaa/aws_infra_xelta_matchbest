@@ -110,6 +110,8 @@ resource "aws_apigatewayv2_stage" "main" {
     })
   }
 
+  tracing_enabled = true
+
   # --- FIX: Make the stage depend on all routes ---
   # This enforces the correct creation and deletion order
   # to prevent the ConflictException.

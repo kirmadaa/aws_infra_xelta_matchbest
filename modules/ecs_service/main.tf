@@ -102,6 +102,27 @@ resource "aws_ecs_task_definition" "frontend" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
+    },
+    {
+      name      = "xray-daemon"
+      image     = "amazon/aws-xray-daemon:3.x"
+      cpu       = 32
+      memory    = 256
+      essential = true
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.frontend.name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "xray"
+        }
+      }
     }
   ])
 }
@@ -160,6 +181,27 @@ resource "aws_ecs_task_definition" "backend" {
           "awslogs-group"         = aws_cloudwatch_log_group.backend.name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    },
+    {
+      name      = "xray-daemon"
+      image     = "amazon/aws-xray-daemon:3.x"
+      cpu       = 32
+      memory    = 256
+      essential = true
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "xray"
         }
       }
     }
