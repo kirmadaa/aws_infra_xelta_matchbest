@@ -76,6 +76,21 @@ resource "aws_s3_bucket" "results_us_east_1" {
   bucket   = "xelta-${var.environment}-results-us-east-1"
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "results_us_east_1" {
+  provider = aws.us_east_1
+  bucket = aws_s3_bucket.results_us_east_1.id
+
+  rule {
+    id     = "intelligent-tiering"
+    status = "Enabled"
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
+    }
+  }
+}
+
 # --- EU-CENTRAL-1 ---
 resource "aws_dynamodb_table" "jobs_eu_central_1" {
   provider     = aws.eu_central_1
@@ -99,6 +114,21 @@ resource "aws_s3_bucket" "results_eu_central_1" {
   bucket   = "xelta-${var.environment}-results-eu-central-1"
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "results_eu_central_1" {
+  provider = aws.eu_central_1
+  bucket = aws_s3_bucket.results_eu_central_1.id
+
+  rule {
+    id     = "intelligent-tiering"
+    status = "Enabled"
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
+    }
+  }
+}
+
 # --- AP-SOUTH-1 ---
 resource "aws_dynamodb_table" "jobs_ap_south_1" {
   provider     = aws.ap_south_1
@@ -120,6 +150,21 @@ resource "aws_sqs_queue" "jobs_ap_south_1" {
 resource "aws_s3_bucket" "results_ap_south_1" {
   provider = aws.ap_south_1
   bucket   = "xelta-${var.environment}-results-ap-south-1"
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "results_ap_south_1" {
+  provider = aws.ap_south_1
+  bucket = aws_s3_bucket.results_ap_south_1.id
+
+  rule {
+    id     = "intelligent-tiering"
+    status = "Enabled"
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
+    }
+  }
 }
 
 
@@ -210,7 +255,7 @@ resource "aws_lambda_function" "connect_handler_us_east_1" {
   function_name    = "xelta-${var.environment}-connect-handler-us-east-1"
   role             = aws_iam_role.lambda_exec_us_east_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
@@ -225,7 +270,7 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
   function_name    = "xelta-${var.environment}-start-job-handler-us-east-1"
   role             = aws_iam_role.lambda_exec_us_east_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/start_job.zip"
   source_code_hash = filebase64sha256("lambda/start_job.zip")
 
@@ -265,7 +310,7 @@ resource "aws_lambda_function" "worker_us_east_1" {
   function_name    = "xelta-${var.environment}-worker-us-east-1"
   role             = aws_iam_role.lambda_exec_us_east_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/worker.zip"
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
@@ -529,7 +574,7 @@ resource "aws_lambda_function" "connect_handler_eu_central_1" {
   function_name    = "xelta-${var.environment}-connect-handler-eu-central-1"
   role             = aws_iam_role.lambda_exec_eu_central_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
@@ -544,7 +589,7 @@ resource "aws_lambda_function" "start_job_handler_eu_central_1" {
   function_name    = "xelta-${var.environment}-start-job-handler-eu-central-1"
   role             = aws_iam_role.lambda_exec_eu_central_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/start_job.zip"
   source_code_hash = filebase64sha256("lambda/start_job.zip")
 
@@ -566,7 +611,7 @@ resource "aws_lambda_function" "worker_eu_central_1" {
   function_name    = "xelta-${var.environment}-worker-eu-central-1"
   role             = aws_iam_role.lambda_exec_eu_central_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/worker.zip"
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
@@ -774,7 +819,7 @@ resource "aws_lambda_function" "connect_handler_ap_south_1" {
   function_name    = "xelta-${var.environment}-connect-handler-ap_south_1"
   role             = aws_iam_role.lambda_exec_ap_south_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
@@ -789,7 +834,7 @@ resource "aws_lambda_function" "start_job_handler_ap_south_1" {
   function_name    = "xelta-${var.environment}-start-job-handler-ap_south_1"
   role             = aws_iam_role.lambda_exec_ap_south_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/start_job.zip"
   source_code_hash = filebase64sha256("lambda/start_job.zip")
 
@@ -811,7 +856,7 @@ resource "aws_lambda_function" "worker_ap_south_1" {
   function_name    = "xelta-${var.environment}-worker-ap_south_1"
   role             = aws_iam_role.lambda_exec_ap_south_1.arn
   handler          = "index.handler"
-  runtime          = "nodejs16.x"
+  runtime          = "nodejs20.x"
   filename         = "lambda/worker.zip" # <-- FIX: This was missing
   source_code_hash = filebase64sha256("lambda/worker.zip")
 

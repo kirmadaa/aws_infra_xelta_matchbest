@@ -29,3 +29,9 @@ variable "single_nat_gateway" {
   type        = bool
   default     = false # Use one NAT per AZ for HA (higher cost)
 }
+
+variable "enable_ec2_nat_instance" {
+  description = "Use a t4g.nano EC2 instance as a NAT device instead of the managed NAT Gateway."
+  type        = bool
+  default     = false
+}

@@ -110,12 +110,20 @@ resource "aws_ecs_service" "frontend" {
   name                   = "xelta-${var.environment}-frontend"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.frontend.arn
-  launch_type            = "FARGATE"
   desired_count          = 2
   enable_execute_command = true
 
   deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 
   network_configuration {
     subnets         = var.private_subnet_ids
@@ -170,12 +178,20 @@ resource "aws_ecs_service" "backend" {
   name                   = "xelta-${var.environment}-backend"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.backend.arn
-  launch_type            = "FARGATE"
   desired_count          = 2
   enable_execute_command = true
 
   deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 
   network_configuration {
     subnets         = var.private_subnet_ids
