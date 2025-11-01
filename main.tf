@@ -7,20 +7,20 @@ data "aws_route53_zone" "main" {
 
 # Global secrets (stored in us-east-1, replicated to other regions)
 module "secrets_us_east_1" {
-  source    = "./modules/secrets"
-  providers = { aws = aws.us_east_1 }
+  source      = "./modules/secrets"
+  providers   = { aws = aws.us_east_1 }
   environment = var.environment
 }
 
 module "secrets_eu_central_1" {
-  source    = "./modules/secrets"
-  providers = { aws = aws.eu_central_1 }
+  source      = "./modules/secrets"
+  providers   = { aws = aws.eu_central_1 }
   environment = var.environment
 }
 
 module "secrets_ap_south_1" {
-  source    = "./modules/secrets"
-  providers = { aws = aws.ap_south_1 }
+  source      = "./modules/secrets"
+  providers   = { aws = aws.ap_south_1 }
   environment = var.environment
 }
 
@@ -78,11 +78,14 @@ resource "aws_s3_bucket" "results_us_east_1" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "results_us_east_1" {
   provider = aws.us_east_1
-  bucket = aws_s3_bucket.results_us_east_1.id
+  bucket   = aws_s3_bucket.results_us_east_1.id
 
   rule {
     id     = "intelligent-tiering"
     status = "Enabled"
+
+    # --- FIX: Added empty filter to satisfy provider requirements ---
+    filter {}
 
     transition {
       days          = 0
@@ -116,11 +119,14 @@ resource "aws_s3_bucket" "results_eu_central_1" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "results_eu_central_1" {
   provider = aws.eu_central_1
-  bucket = aws_s3_bucket.results_eu_central_1.id
+  bucket   = aws_s3_bucket.results_eu_central_1.id
 
   rule {
     id     = "intelligent-tiering"
     status = "Enabled"
+
+    # --- FIX: Added empty filter to satisfy provider requirements ---
+    filter {}
 
     transition {
       days          = 0
@@ -154,11 +160,14 @@ resource "aws_s3_bucket" "results_ap_south_1" {
 
 resource "aws_s3_bucket_lifecycle_configuration" "results_ap_south_1" {
   provider = aws.ap_south_1
-  bucket = aws_s3_bucket.results_ap_south_1.id
+  bucket   = aws_s3_bucket.results_ap_south_1.id
 
   rule {
     id     = "intelligent-tiering"
     status = "Enabled"
+
+    # --- FIX: Added empty filter to satisfy provider requirements ---
+    filter {}
 
     transition {
       days          = 0
@@ -174,8 +183,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "results_ap_south_1" {
 
 # --- IAM Role for Lambdas ---
 resource "aws_iam_role" "lambda_exec_us_east_1" {
-  provider = aws.us_east_1
-  name     = "xelta-${var.environment}-lambda-exec-us-east-1"
+  provider           = aws.us_east_1
+  name               = "xelta-${var.environment}-lambda-exec-us-east-1"
   assume_role_policy = jsonencode({
     Version   = "2012-10-17"
     Statement = [{
@@ -197,7 +206,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution_us_east_1" {
 resource "aws_iam_policy" "lambda_policy_us_east_1" {
   provider = aws.us_east_1
   name     = "xelta-${var.environment}-lambda-policy-us-east-1"
-  policy = jsonencode({
+  policy   = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -335,11 +344,12 @@ module "vpc_us_east_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.us_east_1 }
 
-  environment        = var.environment
-  region             = "us-east-1"
-  vpc_cidr           = var.vpc_cidr_blocks["us-east-1"]
-  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
-  single_nat_gateway = var.environment == "dev" ? true : false
+  environment             = var.environment
+  region                  = "us-east-1"
+  vpc_cidr                = var.vpc_cidr_blocks["us-east-1"]
+  availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  single_nat_gateway      = var.environment == "dev" ? true : false
+  enable_ec2_nat_instance = true # <-- You will need to set this to 'true' in your variables
 }
 
 module "ecs_service_us_east_1" {
@@ -378,12 +388,12 @@ module "redis_us_east_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.us_east_1 }
 
-  environment                  = var.environment
-  region                       = "us-east-1"
-  vpc_id                       = module.vpc_us_east_1.vpc_id
-  private_subnet_ids           = module.vpc_us_east_1.private_subnet_ids
-  node_type                    = var.redis_node_type
-  num_cache_nodes              = var.redis_num_cache_nodes
+  environment                = var.environment
+  region                     = "us-east-1"
+  vpc_id                     = module.vpc_us_east_1.vpc_id
+  private_subnet_ids         = module.vpc_us_east_1.private_subnet_ids
+  node_type                  = var.redis_node_type
+  num_cache_nodes            = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_us_east_1.service_security_group_id]
 }
 
@@ -402,9 +412,9 @@ module "websocket_api_gateway_us_east_1" {
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_us_east_1" {
-  provider      = aws.us_east_1
-  name          = "xelta-http-api-${var.environment}-us-east-1"
-  protocol_type = "HTTP"
+  provider           = aws.us_east_1
+  name               = "xelta-http-api-${var.environment}-us-east-1"
+  protocol_type      = "HTTP"
   cors_configuration {
     allow_origins     = var.api_gateway_cors_origins
     allow_methods     = var.api_gateway_cors_methods
@@ -516,7 +526,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution_eu_central_1" 
 resource "aws_iam_policy" "lambda_policy_eu_central_1" {
   provider = aws.eu_central_1
   name     = "xelta-${var.environment}-lambda-policy-eu-central-1"
-  policy = jsonencode({
+  policy   = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -636,11 +646,12 @@ module "vpc_eu_central_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.eu_central_1 }
 
-  environment        = var.environment
-  region             = "eu-central-1"
-  vpc_cidr           = var.vpc_cidr_blocks["eu-central-1"]
-  availability_zones = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
-  single_nat_gateway = var.environment == "dev" ? true : false
+  environment             = var.environment
+  region                  = "eu-central-1"
+  vpc_cidr                = var.vpc_cidr_blocks["eu-central-1"]
+  availability_zones      = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+  single_nat_gateway      = var.environment == "dev" ? true : false
+  enable_ec2_nat_instance = true # <-- You will need to set this to 'true' in your variables
 }
 
 module "ecs_service_eu_central_1" {
@@ -665,12 +676,12 @@ module "redis_eu_central_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.eu_central_1 }
 
-  environment                  = var.environment
-  region                       = "eu-central-1"
-  vpc_id                       = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids           = module.vpc_eu_central_1.private_subnet_ids
-  node_type                    = var.redis_node_type
-  num_cache_nodes              = var.redis_num_cache_nodes
+  environment                = var.environment
+  region                     = "eu-central-1"
+  vpc_id                     = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
+  node_type                  = var.redis_node_type
+  num_cache_nodes            = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_eu_central_1.service_security_group_id]
 }
 
@@ -689,9 +700,9 @@ module "websocket_api_gateway_eu_central_1" {
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_eu_central_1" {
-  provider      = aws.eu_central_1
-  name          = "xelta-http-api-${var.environment}-eu-central-1"
-  protocol_type = "HTTP"
+  provider           = aws.eu_central_1
+  name               = "xelta-http-api-${var.environment}-eu-central-1"
+  protocol_type      = "HTTP"
   cors_configuration {
     allow_origins     = var.api_gateway_cors_origins
     allow_methods     = var.api_gateway_cors_methods
@@ -761,7 +772,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution_ap_south_1" {
 resource "aws_iam_policy" "lambda_policy_ap_south_1" {
   provider = aws.ap_south_1
   name     = "xelta-${var.environment}-lambda-policy-ap_south_1"
-  policy = jsonencode({
+  policy   = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -881,11 +892,12 @@ module "vpc_ap_south_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.ap_south_1 }
 
-  environment        = var.environment
-  region             = "ap-south-1"
-  vpc_cidr           = var.vpc_cidr_blocks["ap-south-1"]
-  availability_zones = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
-  single_nat_gateway = var.environment == "dev" ? true : false
+  environment             = var.environment
+  region                  = "ap-south-1"
+  vpc_cidr                = var.vpc_cidr_blocks["ap-south-1"]
+  availability_zones      = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  single_nat_gateway      = var.environment == "dev" ? true : false
+  enable_ec2_nat_instance = true # <-- You will need to set this to 'true' in your variables
 }
 
 module "ecs_service_ap_south_1" {
@@ -910,12 +922,12 @@ module "redis_ap_south_1" {
   source    = "./modules/elasticache_redis"
   providers = { aws = aws.ap_south_1 }
 
-  environment                  = var.environment
-  region                       = "ap-south-1"
-  vpc_id                       = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids           = module.vpc_ap_south_1.private_subnet_ids
-  node_type                    = var.redis_node_type
-  num_cache_nodes              = var.redis_num_cache_nodes
+  environment                = var.environment
+  region                     = "ap-south-1"
+  vpc_id                     = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
+  node_type                  = var.redis_node_type
+  num_cache_nodes            = var.redis_num_cache_nodes
   allowed_security_group_ids = [module.ecs_service_ap_south_1.service_security_group_id]
 }
 
@@ -934,9 +946,9 @@ module "websocket_api_gateway_ap_south_1" {
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_ap_south_1" {
-  provider      = aws.ap_south_1
-  name          = "xelta-http-api-${var.environment}-ap-south-1"
-  protocol_type = "HTTP"
+  provider           = aws.ap_south_1
+  name               = "xelta-http-api-${var.environment}-ap-south-1"
+  protocol_type      = "HTTP"
   cors_configuration {
     allow_origins     = var.api_gateway_cors_origins
     allow_methods     = var.api_gateway_cors_methods
