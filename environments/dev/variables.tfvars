@@ -15,17 +15,18 @@ vpc_cidr_blocks = {
 redis_node_type       = "cache.t3.micro"
 redis_num_cache_nodes = 1
 enable_redis          = true
+enable_ec2_nat_instance = true
 
 # Container Images
 frontend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:us-east-1-726ed5208b3bcfe95fc59449e3a84df46b11a17f"
-  "eu-central-1" = "8811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:eu-central-1-726ed5208b3bcfe95fc59449e3a84df46b11a17f"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-726ed5208b3bcfe95fc59449e3a84df46b11a17f"
+  "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/frontend:us-east-1-28d8e9c578ba8f72832b630f44ac65f417624690"
+  "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/frontend:eu-central-1-28d8e9c578ba8f72832b630f44ac65f417624690"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-28d8e9c578ba8f72832b630f44ac65f417624690"
 }
 backend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:us-east-1-d4a23af22b52f77942353bf1573bf5ca6b3c858a"
-  "eu-central-1" = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:eu-central-1-d4a23af22b52f77942353bf1573bf5ca6b3c858a"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-d4a23af22b52f77942353bf1573bf5ca6b3c858a"
+  "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/backend:us-east-1-f015c4bd8cff50e68d4c2b60e314d47eccac6faa"
+  "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/backend:eu-central-1-f015c4bd8cff50e68d4c2b60e314d47eccac6faa"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-f015c4bd8cff50e68d4c2b60e314d47eccac6faa"
 }
 
 # --- ADDED FOR CORS ---

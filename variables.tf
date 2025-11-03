@@ -91,3 +91,9 @@ variable "api_gateway_cors_headers" {
   type        = list(string)
   default     = ["*"]
 }
+
+variable "enable_ec2_nat_instance" {
+  description = "Use a t4g.micro EC2 instance as a NAT device instead of the managed NAT Gateway for cost savings."
+  type        = bool
+  default     = false
+}
