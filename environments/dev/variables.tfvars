@@ -24,16 +24,16 @@ frontend_images = {
   "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-28d8e9c578ba8f72832b630f44ac65f417624690"
 }
 backend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/backend:us-east-1-f015c4bd8cff50e68d4c2b60e314d47eccac6faa"
-  "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/backend:eu-central-1-f015c4bd8cff50e68d4c2b60e314d47eccac6faa"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-f015c4bd8cff50e68d4c2b60e314d47eccac6faa"
+  "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/backend:us-east-1-5f1ddfe851bff7a5cab7dcdc82a62c0418f0c0e5"
+  "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/backend:eu-central-1-5f1ddfe851bff7a5cab7dcdc82a62c0418f0c0e5"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-5f1ddfe851bff7a5cab7dcdc82a62c0418f0c0e5"
 }
 
 # --- ADDED FOR CORS ---
 # You can now control these values here
 api_gateway_cors_origins = [
   "https://xelta.ai",
-  "https://d2cr8lfg6yh01x.cloudfront.net"
+  "https://d3w2zagi373ltj.cloudfront.net/"
 ]
 api_gateway_cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 api_gateway_cors_headers = ["Content-Type", "Authorization"]

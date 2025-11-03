@@ -149,6 +149,28 @@ resource "aws_instance" "nat" {
   vpc_security_group_ids = [aws_security_group.nat_instance[0].id]
   source_dest_check      = false
 
+  # --- SCRIPT ---
+  user_data = <<-EOF
+              #!/bin/bash
+              set -e
+              
+              # Enable IP forwarding
+              echo 1 > /proc/sys/net/ipv4/ip_forward
+              echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+              
+              # Configure iptables for NAT
+              iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+              
+              # Save the iptables rules
+              yum install -y iptables-services
+              service iptables save
+              systemctl enable iptables
+              EOF
+  # --- END OF SCRIPT ---
+
+  # --- FIX: This line was moved out of the (now deleted) lifecycle block ---
+  user_data_replace_on_change = true
+
   tags = {
     Name = "xelta-${var.environment}-nat-instance"
   }
