@@ -40,3 +40,10 @@ output "worker_lambda_sg_id" {
   description = "ID of the security group for the worker lambda"
   value       = aws_security_group.worker_lambda_sg.id
 }
+
+
+
+output "backend_nlb_dns_name" {
+  description = "DNS name of the backend Network Load Balancer"
+  value       = aws_lb.backend_nlb.dns_name
+}

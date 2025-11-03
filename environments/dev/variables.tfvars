@@ -33,7 +33,7 @@ backend_images = {
 # You can now control these values here
 api_gateway_cors_origins = [
   "https://xelta.ai",
-  "https://d3w2zagi373ltj.cloudfront.net/"
+  "https://d3w2zagi373ltj.cloudfront.net"
 ]
 api_gateway_cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 api_gateway_cors_headers = ["Content-Type", "Authorization"]
