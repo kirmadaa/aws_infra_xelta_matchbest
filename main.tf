@@ -80,7 +80,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "results_us_east_1" {
   rule {
     id     = "intelligent-tiering"
     status = "Enabled"
-    filter {} # Added this fix from our last conversation
+    filter {}
 
     transition {
       days          = 0
@@ -119,7 +119,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "results_eu_central_1" {
   rule {
     id     = "intelligent-tiering"
     status = "Enabled"
-    filter {} # Added this fix from our last conversation
+    filter {}
 
     transition {
       days          = 0
@@ -158,7 +158,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "results_ap_south_1" {
   rule {
     id     = "intelligent-tiering"
     status = "Enabled"
-    filter {} # Added this fix from our last conversation
+    filter {}
 
     transition {
       days          = 0
@@ -225,9 +225,10 @@ resource "aws_iam_policy" "lambda_policy_us_east_1" {
         Resource = "${aws_s3_bucket.results_us_east_1.arn}/*"
       },
       {
+        # --- FIX: This ARN is now specific to the API GW ---
         Action   = ["execute-api:ManageConnections"]
         Effect   = "Allow"
-        Resource = "arn:aws:execute-api:us-east-1:*:*"
+        Resource = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*"
       }
     ]
   })
@@ -255,9 +256,9 @@ resource "aws_lambda_function" "connect_handler_us_east_1" {
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
-  #ifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- StartJobHandler Lambda ---
@@ -277,9 +278,9 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
     }
   }
 
-  #lifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 resource "aws_lambda_event_source_mapping" "worker_trigger_ap_south_1" {
@@ -317,31 +318,28 @@ resource "aws_lambda_function" "worker_us_east_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_us_east_1.name
-      S3_BUCKET      = aws_s3_bucket.results_us_east_1.id
-      # --- ADD THIS LINE ---
+      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_us_east_1.name
+      S3_BUCKET              = aws_s3_bucket.results_us_east_1.id
+      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
       BACKEND_API_ENDPOINT   = "http://${module.ecs_service_us_east_1.backend_nlb_dns_name}:8080"
-      # --- ADD THIS LINE ---
       WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_us_east_1[0].api_endpoint
     }
   }
 
-  #lifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 module "vpc_us_east_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.us_east_1 }
 
-  environment        = var.environment
-  region             = "us-east-1"
-  vpc_cidr           = var.vpc_cidr_blocks["us-east-1"]
-  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
-  single_nat_gateway = var.environment == "dev" ? true : false
-  
-  # --- FIX: Pass the variable from the root module ---
+  environment             = var.environment
+  region                  = "us-east-1"
+  vpc_cidr                = var.vpc_cidr_blocks["us-east-1"]
+  availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  single_nat_gateway      = var.environment == "dev" ? true : false
   enable_ec2_nat_instance = var.enable_ec2_nat_instance
 }
 
@@ -399,6 +397,26 @@ module "websocket_api_gateway_us_east_1" {
   default_lambda_arn    = aws_lambda_function.start_job_handler_us_east_1.arn
   disconnect_lambda_arn = aws_lambda_function.connect_handler_us_east_1.arn
 }
+
+# --- ADDED: API Gateway Lambda Permissions for us-east-1 ---
+resource "aws_lambda_permission" "connect_handler_us_east_1" {
+  provider      = aws.us_east_1
+  count         = var.enable_websocket_api ? 1 : 0
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.connect_handler_us_east_1.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*/$connect"
+}
+
+resource "aws_lambda_permission" "start_job_handler_us_east_1" {
+  provider      = aws.us_east_1
+  count         = var.enable_websocket_api ? 1 : 0
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.start_job_handler_us_east_1.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*/$default"
+}
+# --- END OF ADDED PERMISSIONS ---
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_us_east_1" {
@@ -544,9 +562,10 @@ resource "aws_iam_policy" "lambda_policy_eu_central_1" {
         Resource = "${aws_s3_bucket.results_eu_central_1.arn}/*"
       },
       {
+        # --- FIX: This ARN is now specific to the API GW ---
         Action   = ["execute-api:ManageConnections"]
         Effect   = "Allow"
-        Resource = "arn:aws:execute-api:eu-central-1:*:*"
+        Resource = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*"
       }
     ]
   })
@@ -574,9 +593,9 @@ resource "aws_lambda_function" "connect_handler_eu_central_1" {
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
-  #lifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- StartJobHandler Lambda ---
@@ -596,9 +615,9 @@ resource "aws_lambda_function" "start_job_handler_eu_central_1" {
     }
   }
 
-  #lifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- Worker Lambda ---
@@ -618,31 +637,28 @@ resource "aws_lambda_function" "worker_eu_central_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_eu_central_1.name
-      S3_BUCKET      = aws_s3_bucket.results_eu_central_1.id
-      # --- ADD THIS LINE ---
+      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_eu_central_1.name
+      S3_BUCKET              = aws_s3_bucket.results_eu_central_1.id
+      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
       BACKEND_API_ENDPOINT   = "http://${module.ecs_service_eu_central_1.backend_nlb_dns_name}:8080"
-      # --- ADD THIS LINE ---
       WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_eu_central_1[0].api_endpoint
     }
   }
 
-  #lifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 module "vpc_eu_central_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.eu_central_1 }
 
-  environment        = var.environment
-  region             = "eu-central-1"
-  vpc_cidr           = var.vpc_cidr_blocks["eu-central-1"]
-  availability_zones = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
-  single_nat_gateway = var.environment == "dev" ? true : false
-
-  # --- FIX: Pass the variable from the root module ---
+  environment             = var.environment
+  region                  = "eu-central-1"
+  vpc_cidr                = var.vpc_cidr_blocks["eu-central-1"]
+  availability_zones      = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+  single_nat_gateway      = var.environment == "dev" ? true : false
   enable_ec2_nat_instance = var.enable_ec2_nat_instance
 }
 
@@ -687,6 +703,26 @@ module "websocket_api_gateway_eu_central_1" {
   default_lambda_arn    = aws_lambda_function.start_job_handler_eu_central_1.arn
   disconnect_lambda_arn = aws_lambda_function.connect_handler_eu_central_1.arn
 }
+
+# --- ADDED: API Gateway Lambda Permissions for eu-central-1 ---
+resource "aws_lambda_permission" "connect_handler_eu_central_1" {
+  provider      = aws.eu_central_1
+  count         = var.enable_websocket_api ? 1 : 0
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.connect_handler_eu_central_1.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*/$connect"
+}
+
+resource "aws_lambda_permission" "start_job_handler_eu_central_1" {
+  provider      = aws.eu_central_1
+  count         = var.enable_websocket_api ? 1 : 0
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.start_job_handler_eu_central_1.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*/$default"
+}
+# --- END OF ADDED PERMISSIONS ---
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_eu_central_1" {
@@ -790,9 +826,10 @@ resource "aws_iam_policy" "lambda_policy_ap_south_1" {
         Resource = "${aws_s3_bucket.results_ap_south_1.arn}/*"
       },
       {
+        # --- FIX: This ARN is now specific to the API GW ---
         Action   = ["execute-api:ManageConnections"]
         Effect   = "Allow"
-        Resource = "arn:aws:execute-api:ap-south-1:*:*"
+        Resource = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*"
       }
     ]
   })
@@ -820,9 +857,9 @@ resource "aws_lambda_function" "connect_handler_ap_south_1" {
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
-  #lifecycle {
-   # ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- StartJobHandler Lambda ---
@@ -842,9 +879,9 @@ resource "aws_lambda_function" "start_job_handler_ap_south_1" {
     }
   }
 
-  #lifecycle {
-   # ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 # --- Worker Lambda ---
@@ -854,7 +891,7 @@ resource "aws_lambda_function" "worker_ap_south_1" {
   role             = aws_iam_role.lambda_exec_ap_south_1.arn
   handler          = "index.handler"
   runtime          = "nodejs20.x"
-  filename         = "lambda/worker.zip" # <-- FIX: This was missing
+  filename         = "lambda/worker.zip"
   source_code_hash = filebase64sha256("lambda/worker.zip")
 
   vpc_config {
@@ -864,31 +901,28 @@ resource "aws_lambda_function" "worker_ap_south_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_ap_south_1.name
-      S3_BUCKET      = aws_s3_bucket.results_ap_south_1.id
-      # --- ADD THIS LINE ---
+      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_ap_south_1.name
+      S3_BUCKET              = aws_s3_bucket.results_ap_south_1.id
+      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
       BACKEND_API_ENDPOINT   = "http://${module.ecs_service_ap_south_1.backend_nlb_dns_name}:8080"
-      # --- ADD THIS LINE ---
       WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_ap_south_1[0].api_endpoint
     }
   }
 
-  #lifecycle {
-  #  ignore_changes = all
-  #}
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 module "vpc_ap_south_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.ap_south_1 }
 
-  environment        = var.environment
-  region             = "ap-south-1"
-  vpc_cidr           = var.vpc_cidr_blocks["ap-south-1"]
-  availability_zones = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
-  single_nat_gateway = var.environment == "dev" ? true : false
-
-  # --- FIX: Pass the variable from the root module ---
+  environment             = var.environment
+  region                  = "ap-south-1"
+  vpc_cidr                = var.vpc_cidr_blocks["ap-south-1"]
+  availability_zones      = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  single_nat_gateway      = var.environment == "dev" ? true : false
   enable_ec2_nat_instance = var.enable_ec2_nat_instance
 }
 
@@ -933,6 +967,26 @@ module "websocket_api_gateway_ap_south_1" {
   default_lambda_arn    = aws_lambda_function.start_job_handler_ap_south_1.arn
   disconnect_lambda_arn = aws_lambda_function.connect_handler_ap_south_1.arn
 }
+
+# --- ADDED: API Gateway Lambda Permissions for ap-south-1 ---
+resource "aws_lambda_permission" "connect_handler_ap_south_1" {
+  provider      = aws.ap_south_1
+  count         = var.enable_websocket_api ? 1 : 0
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.connect_handler_ap_south_1.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*/$connect"
+}
+
+resource "aws_lambda_permission" "start_job_handler_ap_south_1" {
+  provider      = aws.ap_south_1
+  count         = var.enable_websocket_api ? 1 : 0
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.start_job_handler_ap_south_1.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*/$default"
+}
+# --- END OF ADDED PERMISSIONS ---
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_ap_south_1" {
