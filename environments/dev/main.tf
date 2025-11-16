@@ -25,50 +25,9 @@ data "aws_route53_zone" "main" {
   private_zone = false
 }
 
-# Global secrets (stored in us-east-1, replicated to other regions)
-module "secrets_us_east_1" {
-  source      = "./modules/secrets"
-  providers   = { aws = aws.us_east_1 }
-  environment = var.environment
-}
-
-module "secrets_eu_central_1" {
-  source      = "./modules/secrets"
-  providers   = { aws = aws.eu_central_1 }
-  environment = var.environment
-}
-
-module "secrets_ap_south_1" {
-  source      = "./modules/secrets"
-  providers   = { aws = aws.ap_south_1 }
-  environment = var.environment
-}
-
-# WAF & CDN (Global resources)
-module "waf" {
-  source      = "./modules/waf"
-  environment = var.environment
-}
-
-module "cdn" {
-  source          = "./modules/cdn"
-  environment     = var.environment
-  domain_name     = var.domain_name
-  route53_zone_id = data.aws_route53_zone.main.zone_id
-  waf_web_acl_arn = module.waf.waf_arn
-
-  origins = {
-    us-east-1    = module.xelta_us_east_1.frontend_alb_dns_name
-    eu-central-1 = module.xelta_eu_central_1.frontend_alb_dns_name
-    ap-south-1   = module.xelta_ap_south_1.frontend_alb_dns_name
-  }
-
-  certificate_arn = module.route53_acm_us_east_1.certificate_arn
-}
-
 # --- Regional Resources ---
 module "vpc_us_east_1" {
-  source    = "./modules/vpc"
+  source    = "../../modules/vpc"
   providers = { aws = aws.us_east_1 }
 
   environment        = var.environment
@@ -79,7 +38,7 @@ module "vpc_us_east_1" {
 }
 
 module "vpc_eu_central_1" {
-  source    = "./modules/vpc"
+  source    = "../../modules/vpc"
   providers = { aws = aws.eu_central_1 }
 
   environment        = var.environment
@@ -90,7 +49,7 @@ module "vpc_eu_central_1" {
 }
 
 module "vpc_ap_south_1" {
-  source    = "./modules/vpc"
+  source    = "../../modules/vpc"
   providers = { aws = aws.ap_south_1 }
 
   environment        = var.environment
@@ -102,7 +61,7 @@ module "vpc_ap_south_1" {
 
 # --- Xelta Application ---
 module "xelta_us_east_1" {
-  source = "./apps/xelta"
+  source = "../../apps/xelta"
   providers = { aws = aws.us_east_1 }
 
   enable_xelta     = var.enable_xelta
@@ -117,7 +76,7 @@ module "xelta_us_east_1" {
 }
 
 module "xelta_eu_central_1" {
-  source = "./apps/xelta"
+  source = "../../apps/xelta"
   providers = { aws = aws.eu_central_1 }
 
   enable_xelta     = var.enable_xelta
@@ -125,14 +84,14 @@ module "xelta_eu_central_1" {
   region           = "eu-central-1"
   frontend_image   = var.frontend_images["eu-central-1"]
   backend_image    = var.backend_images["eu-central-1"]
-  vpc_id           = module.vpc_eu_central_1.vpc_.id
+  vpc_id           = module.vpc_eu_central_1.vpc_id
   vpc_cidr         = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids = module.vpc_eu_central_1.private_subnet_ids
   public_subnet_ids  = module.vpc_eu_central_1.public_subnet_ids
 }
 
 module "xelta_ap_south_1" {
-  source = "./apps/xelta"
+  source = "../../apps/xelta"
   providers = { aws = aws.ap_south_1 }
 
   enable_xelta     = var.enable_xelta
