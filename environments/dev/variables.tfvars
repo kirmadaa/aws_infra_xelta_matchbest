@@ -10,12 +10,8 @@ vpc_cidr_blocks = {
   "ap-south-1"   = "10.2.0.0/16"
 }
 
-
-# Redis Configuration (minimal for dev)
-redis_node_type       = "cache.t3.micro"
-redis_num_cache_nodes = 1
-enable_redis          = true
-enable_ec2_nat_instance = true
+# Xelta Application Switch
+enable_xelta = true
 
 # Container Images
 frontend_images = {
@@ -28,12 +24,3 @@ backend_images = {
   "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/backend:eu-central-1-5f1ddfe851bff7a5cab7dcdc82a62c0418f0c0e5"
   "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/backend:ap-south-1-5f1ddfe851bff7a5cab7dcdc82a62c0418f0c0e5"
 }
-
-# --- ADDED FOR CORS ---
-# You can now control these values here
-api_gateway_cors_origins = [
-  "https://xelta.ai",
-  "https://d3w2zagi373ltj.cloudfront.net"
-]
-api_gateway_cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-api_gateway_cors_headers = ["Content-Type", "Authorization"]

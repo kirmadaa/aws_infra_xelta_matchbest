@@ -1,1033 +1,280 @@
+# Provider configuration for multiple regions
+provider "aws" {
+  region = "us-east-1"
+  alias  = "us_east_1"
+}
+
+provider "aws" {
+  region = "eu-central-1"
+  alias  = "eu_central_1"
+}
+
+provider "aws" {
+  region = "ap-south-1"
+  alias  = "ap_south_1"
+}
+
+# Backend configuration
+terraform {
+  backend "s3" {}
+}
+
 # Data source for Route53 hosted zone
 data "aws_route53_zone" "main" {
   name         = var.domain_name
   private_zone = false
 }
 
-
-# Global secrets (stored in us-east-1, replicated to other regions)
-module "secrets_us_east_1" {
-  source      = "./modules/secrets"
-  providers   = { aws = aws.us_east_1 }
-  environment = var.environment
-}
-
-module "secrets_eu_central_1" {
-  source      = "./modules/secrets"
-  providers   = { aws = aws.eu_central_1 }
-  environment = var.environment
-}
-
-module "secrets_ap_south_1" {
-  source      = "./modules/secrets"
-  providers   = { aws = aws.ap_south_1 }
-  environment = var.environment
-}
-
-# WAF & CDN (Global resources)
+# --- Global Resources ---
 module "waf" {
   source      = "./modules/waf"
   environment = var.environment
 }
 
-module "cdn" {
-  source          = "./modules/cdn"
-  environment     = var.environment
-  domain_name     = var.domain_name
-  route53_zone_id = data.aws_route53_zone.main.zone_id
-  waf_web_acl_arn = module.waf.waf_arn
+# Note: The 'cdn' module is defined at the end of the file after all regional ALBs are created.
 
-  origins = {
-    us-east-1    = module.ecs_service_us_east_1.frontend_alb_dns_name
-    eu-central-1 = module.ecs_service_eu_central_1.frontend_alb_dns_name
-    ap-south-1   = module.ecs_service_ap_south_1.frontend_alb_dns_name
-  }
-
-  certificate_arn = module.route53_acm_us_east_1.certificate_arn
-}
-
-# ==================================
-# NEW SERVERLESS BACKEND COMPONENTS
-# ==================================
-
-# --- US-EAST-1 ---
-resource "aws_dynamodb_table" "jobs_us_east_1" {
-  provider     = aws.us_east_1
-  name         = "xelta-${var.environment}-jobs-us-east-1"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "jobId"
-
-  attribute {
-    name = "jobId"
-    type = "S"
-  }
-}
-
-resource "aws_sqs_queue" "jobs_us_east_1" {
-  provider = aws.us_east_1
-  name     = "xelta-${var.environment}-jobs-us-east-1"
-}
-
-resource "aws_s3_bucket" "results_us_east_1" {
-  provider = aws.us_east_1
-  bucket   = "xelta-${var.environment}-results-us-east-1"
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "results_us_east_1" {
-  provider = aws.us_east_1
-  bucket   = aws_s3_bucket.results_us_east_1.id
-
-  rule {
-    id     = "intelligent-tiering"
-    status = "Enabled"
-    filter {}
-
-    transition {
-      days          = 0
-      storage_class = "INTELLIGENT_TIERING"
-    }
-  }
-}
-
-# --- EU-CENTRAL-1 ---
-resource "aws_dynamodb_table" "jobs_eu_central_1" {
-  provider     = aws.eu_central_1
-  name         = "xelta-${var.environment}-jobs-eu-central-1"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "jobId"
-
-  attribute {
-    name = "jobId"
-    type = "S"
-  }
-}
-
-resource "aws_sqs_queue" "jobs_eu_central_1" {
-  provider = aws.eu_central_1
-  name     = "xelta-${var.environment}-jobs-eu-central-1"
-}
-
-resource "aws_s3_bucket" "results_eu_central_1" {
-  provider = aws.eu_central_1
-  bucket   = "xelta-${var.environment}-results-eu-central-1"
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "results_eu_central_1" {
-  provider = aws.eu_central_1
-  bucket   = aws_s3_bucket.results_eu_central_1.id
-
-  rule {
-    id     = "intelligent-tiering"
-    status = "Enabled"
-    filter {}
-
-    transition {
-      days          = 0
-      storage_class = "INTELLIGENT_TIERING"
-    }
-  }
-}
-
-# --- AP-SOUTH-1 ---
-resource "aws_dynamodb_table" "jobs_ap_south_1" {
-  provider     = aws.ap_south_1
-  name         = "xelta-${var.environment}-jobs-ap-south-1"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "jobId"
-
-  attribute {
-    name = "jobId"
-    type = "S"
-  }
-}
-
-resource "aws_sqs_queue" "jobs_ap_south_1" {
-  provider = aws.ap_south_1
-  name     = "xelta-${var.environment}-jobs-ap-south-1"
-}
-
-resource "aws_s3_bucket" "results_ap_south_1" {
-  provider = aws.ap_south_1
-  bucket   = "xelta-${var.environment}-results-ap-south-1"
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "results_ap_south_1" {
-  provider = aws.ap_south_1
-  bucket   = aws_s3_bucket.results_ap_south_1.id
-
-  rule {
-    id     = "intelligent-tiering"
-    status = "Enabled"
-    filter {}
-
-    transition {
-      days          = 0
-      storage_class = "INTELLIGENT_TIERING"
-    }
-  }
-}
-
-
-# ===========================
-# US-EAST-1 REGION RESOURCES
-# ===========================
-
-# --- IAM Role for Lambdas ---
-resource "aws_iam_role" "lambda_exec_us_east_1" {
-  provider           = aws.us_east_1
-  name               = "xelta-${var.environment}-lambda-exec-us-east-1"
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "lambda.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_basic_execution_us_east_1" {
-  provider   = aws.us_east_1
-  role       = aws_iam_role.lambda_exec_us_east_1.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_policy" "lambda_policy_us_east_1" {
-  provider = aws.us_east_1
-  name     = "xelta-${var.environment}-lambda-policy-us-east-1"
-  policy   = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ]
-        Effect   = "Allow"
-        Resource = aws_sqs_queue.jobs_us_east_1.arn
-      },
-      {
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
-        ]
-        Effect   = "Allow"
-        Resource = aws_dynamodb_table.jobs_us_east_1.arn
-      },
-      {
-        Action   = ["s3:PutObject"]
-        Effect   = "Allow"
-        Resource = "${aws_s3_bucket.results_us_east_1.arn}/*"
-      },
-      {
-        # --- FIX: This ARN is now specific to the API GW ---
-        Action   = ["execute-api:ManageConnections"]
-        Effect   = "Allow"
-        Resource = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_policy_attachment_us_east_1" {
-  provider   = aws.us_east_1
-  role       = aws_iam_role.lambda_exec_us_east_1.name
-  policy_arn = aws_iam_policy.lambda_policy_us_east_1.arn
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_vpc_access_us_east_1" {
-  provider   = aws.us_east_1
-  role       = aws_iam_role.lambda_exec_us_east_1.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-# --- ConnectHandler Lambda ---
-resource "aws_lambda_function" "connect_handler_us_east_1" {
-  provider         = aws.us_east_1
-  function_name    = "xelta-${var.environment}-connect-handler-us-east-1"
-  role             = aws_iam_role.lambda_exec_us_east_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/connect.zip"
-  source_code_hash = filebase64sha256("lambda/connect.zip")
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- StartJobHandler Lambda ---
-resource "aws_lambda_function" "start_job_handler_us_east_1" {
-  provider         = aws.us_east_1
-  function_name    = "xelta-${var.environment}-start-job-handler-us-east-1"
-  role             = aws_iam_role.lambda_exec_us_east_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/start_job.zip"
-  source_code_hash = filebase64sha256("lambda/start_job.zip")
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_us_east_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_us_east_1.id
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-resource "aws_lambda_event_source_mapping" "worker_trigger_ap_south_1" {
-  provider         = aws.ap_south_1
-  event_source_arn = aws_sqs_queue.jobs_ap_south_1.arn
-  function_name    = aws_lambda_function.worker_ap_south_1.arn
-}
-
-resource "aws_lambda_event_source_mapping" "worker_trigger_eu_central_1" {
-  provider         = aws.eu_central_1
-  event_source_arn = aws_sqs_queue.jobs_eu_central_1.arn
-  function_name    = aws_lambda_function.worker_eu_central_1.arn
-}
-
-resource "aws_lambda_event_source_mapping" "worker_trigger_us_east_1" {
-  provider         = aws.us_east_1
-  event_source_arn = aws_sqs_queue.jobs_us_east_1.arn
-  function_name    = aws_lambda_function.worker_us_east_1.arn
-}
-
-# --- Worker Lambda ---
-resource "aws_lambda_function" "worker_us_east_1" {
-  provider         = aws.us_east_1
-  function_name    = "xelta-${var.environment}-worker-us-east-1"
-  role             = aws_iam_role.lambda_exec_us_east_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/worker.zip"
-  source_code_hash = filebase64sha256("lambda/worker.zip")
-
-  vpc_config {
-    subnet_ids         = module.vpc_us_east_1.private_subnet_ids
-    security_group_ids = [module.ecs_service_us_east_1.worker_lambda_sg_id]
-  }
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_us_east_1.name
-      S3_BUCKET              = aws_s3_bucket.results_us_east_1.id
-      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
-      BACKEND_API_ENDPOINT   = "http://${module.ecs_service_us_east_1.backend_nlb_dns_name}:8080"
-      WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_us_east_1[0].api_endpoint
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
+# --- Regional VPCs ---
 module "vpc_us_east_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.us_east_1 }
-
-  environment             = var.environment
-  region                  = "us-east-1"
-  vpc_cidr                = var.vpc_cidr_blocks["us-east-1"]
-  availability_zones      = ["us-east-1a", "us-east-1b", "us-east-1c"]
-  single_nat_gateway      = var.environment == "dev" ? true : false
-  enable_ec2_nat_instance = var.enable_ec2_nat_instance
-}
-
-module "ecs_service_us_east_1" {
-  source    = "./modules/ecs_service"
-  providers = { aws = aws.us_east_1 }
-
-  environment            = var.environment
-  region                 = "us-east-1"
-  vpc_id                 = module.vpc_us_east_1.vpc_id
-  vpc_cidr               = var.vpc_cidr_blocks["us-east-1"]
-  private_subnet_ids     = module.vpc_us_east_1.private_subnet_ids
-  public_subnet_ids      = module.vpc_us_east_1.public_subnet_ids
-  frontend_image         = var.frontend_images["us-east-1"]
-  backend_image          = var.backend_images["us-east-1"]
-  http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_us_east_1.id
-}
-
-module "route53_acm_us_east_1" {
-  source    = "./modules/route53_acm"
-  providers = { aws = aws.us_east_1 }
-
-  environment     = var.environment
-  region          = "us-east-1"
-  domain_name     = var.domain_name
-  route53_zone_id = data.aws_route53_zone.main.zone_id
-
-  cdn_dns_name    = module.cdn.cdn_dns_name
-  cdn_zone_id     = module.cdn.cdn_zone_id
-}
-
-module "redis_us_east_1" {
-  count     = var.enable_redis ? 1 : 0
-  source    = "./modules/elasticache_redis"
-  providers = { aws = aws.us_east_1 }
-
-  environment                = var.environment
-  region                     = "us-east-1"
-  vpc_id                     = module.vpc_us_east_1.vpc_id
-  private_subnet_ids         = module.vpc_us_east_1.private_subnet_ids
-  node_type                  = var.redis_node_type
-  num_cache_nodes            = var.redis_num_cache_nodes
-  allowed_security_group_ids = [module.ecs_service_us_east_1.service_security_group_id]
-}
-
-module "websocket_api_gateway_us_east_1" {
-  count     = var.enable_websocket_api ? 1 : 0
-  source    = "./modules/websocket_api_gateway"
-  providers = { aws = aws.us_east_1 }
-
-  environment           = var.environment
-  region                = "us-east-1"
-  vpc_id                = module.vpc_us_east_1.vpc_id
-  connect_lambda_arn    = aws_lambda_function.connect_handler_us_east_1.arn
-  default_lambda_arn    = aws_lambda_function.start_job_handler_us_east_1.arn
-  disconnect_lambda_arn = aws_lambda_function.connect_handler_us_east_1.arn
-}
-
-# --- ADDED: API Gateway Lambda Permissions for us-east-1 ---
-resource "aws_lambda_permission" "connect_handler_us_east_1" {
-  provider      = aws.us_east_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect_handler_us_east_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*/$connect"
-}
-
-resource "aws_lambda_permission" "start_job_handler_us_east_1" {
-  provider      = aws.us_east_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.start_job_handler_us_east_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*/$default"
-}
-# --- END OF ADDED PERMISSIONS ---
-
-# --- NEW HTTP API Gateway ---
-resource "aws_apigatewayv2_api" "http_api_us_east_1" {
-  provider           = aws.us_east_1
-  name               = "xelta-http-api-${var.environment}-us-east-1"
-  protocol_type      = "HTTP"
-  cors_configuration {
-    allow_origins     = var.api_gateway_cors_origins
-    allow_methods     = var.api_gateway_cors_methods
-    allow_headers     = var.api_gateway_cors_headers
-    allow_credentials = true
-  }
-}
-
-resource "aws_apigatewayv2_vpc_link" "http_api_us_east_1" {
-  provider           = aws.us_east_1
-  name               = "xelta-http-api-${var.environment}-us-east-1-vpclink"
-  subnet_ids         = module.vpc_us_east_1.private_subnet_ids
-  security_group_ids = [aws_security_group.http_api_vpclink_sg_us_east_1.id]
-}
-
-resource "aws_apigatewayv2_integration" "http_api_us_east_1" {
-  provider             = aws.us_east_1
-  api_id               = aws_apigatewayv2_api.http_api_us_east_1.id
-  integration_type     = "HTTP_PROXY"
-  integration_uri      = module.ecs_service_us_east_1.backend_nlb_listener_arn
-  integration_method   = "ANY"
-  connection_type      = "VPC_LINK"
-  connection_id        = aws_apigatewayv2_vpc_link.http_api_us_east_1.id
-}
-
-resource "aws_apigatewayv2_route" "http_api_us_east_1" {
-  provider  = aws.us_east_1
-  api_id    = aws_apigatewayv2_api.http_api_us_east_1.id
-  route_key = "ANY /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.http_api_us_east_1.id}"
-}
-
-resource "aws_apigatewayv2_stage" "http_api_us_east_1" {
-  provider    = aws.us_east_1
-  api_id      = aws_apigatewayv2_api.http_api_us_east_1.id
-  name        = "$default"
-  auto_deploy = true
-}
-
-resource "aws_security_group" "http_api_vpclink_sg_ap_south_1" {
-  provider    = aws.ap_south_1
-  name        = "xelta-http-api-${var.environment}-ap-south-1-vpclink-sg"
-  description = "Allow traffic from HTTP API Gateway VPC Link"
-  vpc_id      = module.vpc_ap_south_1.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_security_group" "http_api_vpclink_sg_eu_central_1" {
-  provider    = aws.eu_central_1
-  name        = "xelta-http-api-${var.environment}-eu-central-1-vpclink-sg"
-  description = "Allow traffic from HTTP API Gateway VPC Link"
-  vpc_id      = module.vpc_eu_central_1.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_security_group" "http_api_vpclink_sg_us_east_1" {
-  provider    = aws.us_east_1
-  name        = "xelta-http-api-${var.environment}-us-east-1-vpclink-sg"
-  description = "Allow traffic from HTTP API Gateway VPC Link"
-  vpc_id      = module.vpc_us_east_1.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-
-# ===============================
-# EU-CENTRAL-1 REGION RESOURCES
-# ===============================
-
-# --- IAM Role for Lambdas ---
-resource "aws_iam_role" "lambda_exec_eu_central_1" {
-  provider = aws.eu_central_1
-  name     = "xelta-${var.environment}-lambda-exec-eu-central-1"
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "lambda.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_basic_execution_eu_central_1" {
-  provider   = aws.eu_central_1
-  role       = aws_iam_role.lambda_exec_eu_central_1.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_policy" "lambda_policy_eu_central_1" {
-  provider = aws.eu_central_1
-  name     = "xelta-${var.environment}-lambda-policy-eu-central-1"
-  policy   = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ]
-        Effect   = "Allow"
-        Resource = aws_sqs_queue.jobs_eu_central_1.arn
-      },
-      {
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
-        ]
-        Effect   = "Allow"
-        Resource = aws_dynamodb_table.jobs_eu_central_1.arn
-      },
-      {
-        Action   = ["s3:PutObject"]
-        Effect   = "Allow"
-        Resource = "${aws_s3_bucket.results_eu_central_1.arn}/*"
-      },
-      {
-        # --- FIX: This ARN is now specific to the API GW ---
-        Action   = ["execute-api:ManageConnections"]
-        Effect   = "Allow"
-        Resource = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_policy_attachment_eu_central_1" {
-  provider   = aws.eu_central_1
-  role       = aws_iam_role.lambda_exec_eu_central_1.name
-  policy_arn = aws_iam_policy.lambda_policy_eu_central_1.arn
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_vpc_access_eu_central_1" {
-  provider   = aws.eu_central_1
-  role       = aws_iam_role.lambda_exec_eu_central_1.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-# --- ConnectHandler Lambda ---
-resource "aws_lambda_function" "connect_handler_eu_central_1" {
-  provider         = aws.eu_central_1
-  function_name    = "xelta-${var.environment}-connect-handler-eu-central-1"
-  role             = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/connect.zip"
-  source_code_hash = filebase64sha256("lambda/connect.zip")
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- StartJobHandler Lambda ---
-resource "aws_lambda_function" "start_job_handler_eu_central_1" {
-  provider         = aws.eu_central_1
-  function_name    = "xelta-${var.environment}-start-job-handler-eu-central-1"
-  role             = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/start_job.zip"
-  source_code_hash = filebase64sha256("lambda/start_job.zip")
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_eu_central_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_eu_central_1.id
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- Worker Lambda ---
-resource "aws_lambda_function" "worker_eu_central_1" {
-  provider         = aws.eu_central_1
-  function_name    = "xelta-${var.environment}-worker-eu-central-1"
-  role             = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/worker.zip"
-  source_code_hash = filebase64sha256("lambda/worker.zip")
-
-  vpc_config {
-    subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
-    security_group_ids = [module.ecs_service_eu_central_1.worker_lambda_sg_id]
-  }
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_eu_central_1.name
-      S3_BUCKET              = aws_s3_bucket.results_eu_central_1.id
-      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
-      BACKEND_API_ENDPOINT   = "http://${module.ecs_service_eu_central_1.backend_nlb_dns_name}:8080"
-      WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_eu_central_1[0].api_endpoint
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
+  # ... vpc variables ...
+  environment = var.environment
+  region      = "us-east-1"
+  vpc_cidr    = var.vpc_cidr_blocks["us-east-1"]
+  # ... other variables
 }
 
 module "vpc_eu_central_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.eu_central_1 }
-
-  environment             = var.environment
-  region                  = "eu-central-1"
-  vpc_cidr                = var.vpc_cidr_blocks["eu-central-1"]
-  availability_zones      = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
-  single_nat_gateway      = var.environment == "dev" ? true : false
-  enable_ec2_nat_instance = var.enable_ec2_nat_instance
-}
-
-module "ecs_service_eu_central_1" {
-  source    = "./modules/ecs_service"
-  providers = { aws = aws.eu_central_1 }
-
-  environment            = var.environment
-  region                 = "eu-central-1"
-  vpc_id                 = module.vpc_eu_central_1.vpc_id
-  vpc_cidr               = var.vpc_cidr_blocks["eu-central-1"]
-  private_subnet_ids     = module.vpc_eu_central_1.private_subnet_ids
-  public_subnet_ids      = module.vpc_eu_central_1.public_subnet_ids
-  frontend_image         = var.frontend_images["eu-central-1"]
-  backend_image          = var.backend_images["eu-central-1"]
-  http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_eu_central_1.id
-}
-
-module "redis_eu_central_1" {
-  count     = var.enable_redis ? 1 : 0
-  source    = "./modules/elasticache_redis"
-  providers = { aws = aws.eu_central_1 }
-
-  environment                = var.environment
-  region                     = "eu-central-1"
-  vpc_id                     = module.vpc_eu_central_1.vpc_id
-  private_subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
-  node_type                  = var.redis_node_type
-  num_cache_nodes            = var.redis_num_cache_nodes
-  allowed_security_group_ids = [module.ecs_service_eu_central_1.service_security_group_id]
-}
-
-module "websocket_api_gateway_eu_central_1" {
-  count     = var.enable_websocket_api ? 1 : 0
-  source    = "./modules/websocket_api_gateway"
-  providers = { aws = aws.eu_central_1 }
-
-  environment           = var.environment
-  region                = "eu-central-1"
-  vpc_id                = module.vpc_eu_central_1.vpc_id
-  connect_lambda_arn    = aws_lambda_function.connect_handler_eu_central_1.arn
-  default_lambda_arn    = aws_lambda_function.start_job_handler_eu_central_1.arn
-  disconnect_lambda_arn = aws_lambda_function.connect_handler_eu_central_1.arn
-}
-
-# --- ADDED: API Gateway Lambda Permissions for eu-central-1 ---
-resource "aws_lambda_permission" "connect_handler_eu_central_1" {
-  provider      = aws.eu_central_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect_handler_eu_central_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*/$connect"
-}
-
-resource "aws_lambda_permission" "start_job_handler_eu_central_1" {
-  provider      = aws.eu_central_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.start_job_handler_eu_central_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*/$default"
-}
-# --- END OF ADDED PERMISSIONS ---
-
-# --- NEW HTTP API Gateway ---
-resource "aws_apigatewayv2_api" "http_api_eu_central_1" {
-  provider           = aws.eu_central_1
-  name               = "xelta-http-api-${var.environment}-eu-central-1"
-  protocol_type      = "HTTP"
-  cors_configuration {
-    allow_origins     = var.api_gateway_cors_origins
-    allow_methods     = var.api_gateway_cors_methods
-    allow_headers     = var.api_gateway_cors_headers
-    allow_credentials = true
-  }
-}
-
-resource "aws_apigatewayv2_vpc_link" "http_api_eu_central_1" {
-  provider           = aws.eu_central_1
-  name               = "xelta-http-api-${var.environment}-eu-central-1-vpclink"
-  subnet_ids         = module.vpc_eu_central_1.private_subnet_ids
-  security_group_ids = [aws_security_group.http_api_vpclink_sg_eu_central_1.id]
-}
-
-resource "aws_apigatewayv2_integration" "http_api_eu_central_1" {
-  provider             = aws.eu_central_1
-  api_id               = aws_apigatewayv2_api.http_api_eu_central_1.id
-  integration_type     = "HTTP_PROXY"
-  integration_uri      = module.ecs_service_eu_central_1.backend_nlb_listener_arn
-  integration_method   = "ANY"
-  connection_type      = "VPC_LINK"
-  connection_id        = aws_apigatewayv2_vpc_link.http_api_eu_central_1.id
-}
-
-resource "aws_apigatewayv2_route" "http_api_eu_central_1" {
-  provider  = aws.eu_central_1
-  api_id    = aws_apigatewayv2_api.http_api_eu_central_1.id
-  route_key = "ANY /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.http_api_eu_central_1.id}"
-}
-
-resource "aws_apigatewayv2_stage" "http_api_eu_central_1" {
-  provider    = aws.eu_central_1
-  api_id      = aws_apigatewayv2_api.http_api_eu_central_1.id
-  name        = "$default"
-  auto_deploy = true
-}
-
-
-# ============================
-# AP-SOUTH-1 REGION RESOURCES
-# ============================
-
-# --- IAM Role for Lambdas ---
-resource "aws_iam_role" "lambda_exec_ap_south_1" {
-  provider = aws.ap_south_1
-  name     = "xelta-${var.environment}-lambda-exec-ap_south_1"
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "lambda.amazonaws.com"
-      }
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_basic_execution_ap_south_1" {
-  provider   = aws.ap_south_1
-  role       = aws_iam_role.lambda_exec_ap_south_1.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_policy" "lambda_policy_ap_south_1" {
-  provider = aws.ap_south_1
-  name     = "xelta-${var.environment}-lambda-policy-ap_south_1"
-  policy   = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ]
-        Effect   = "Allow"
-        Resource = aws_sqs_queue.jobs_ap_south_1.arn
-      },
-      {
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem"
-        ]
-        Effect   = "Allow"
-        Resource = aws_dynamodb_table.jobs_ap_south_1.arn
-      },
-      {
-        Action   = ["s3:PutObject"]
-        Effect   = "Allow"
-        Resource = "${aws_s3_bucket.results_ap_south_1.arn}/*"
-      },
-      {
-        # --- FIX: This ARN is now specific to the API GW ---
-        Action   = ["execute-api:ManageConnections"]
-        Effect   = "Allow"
-        Resource = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_policy_attachment_ap_south_1" {
-  provider   = aws.ap_south_1
-  role       = aws_iam_role.lambda_exec_ap_south_1.name
-  policy_arn = aws_iam_policy.lambda_policy_ap_south_1.arn
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_vpc_access_ap_south_1" {
-  provider   = aws.ap_south_1
-  role       = aws_iam_role.lambda_exec_ap_south_1.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-# --- ConnectHandler Lambda ---
-resource "aws_lambda_function" "connect_handler_ap_south_1" {
-  provider         = aws.ap_south_1
-  function_name    = "xelta-${var.environment}-connect-handler-ap_south_1"
-  role             = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/connect.zip"
-  source_code_hash = filebase64sha256("lambda/connect.zip")
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- StartJobHandler Lambda ---
-resource "aws_lambda_function" "start_job_handler_ap_south_1" {
-  provider         = aws.ap_south_1
-  function_name    = "xelta-${var.environment}-start-job-handler-ap_south_1"
-  role             = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/start_job.zip"
-  source_code_hash = filebase64sha256("lambda/start_job.zip")
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_ap_south_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_ap_south_1.id
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- Worker Lambda ---
-resource "aws_lambda_function" "worker_ap_south_1" {
-  provider         = aws.ap_south_1
-  function_name    = "xelta-${var.environment}-worker-ap_south_1"
-  role             = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/worker.zip"
-  source_code_hash = filebase64sha256("lambda/worker.zip")
-
-  vpc_config {
-    subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
-    security_group_ids = [module.ecs_service_ap_south_1.worker_lambda_sg_id]
-  }
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_ap_south_1.name
-      S3_BUCKET              = aws_s3_bucket.results_ap_south_1.id
-      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
-      BACKEND_API_ENDPOINT   = "http://${module.ecs_service_ap_south_1.backend_nlb_dns_name}:8080"
-      WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_ap_south_1[0].api_endpoint
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
+  # ... vpc variables ...
+    environment = var.environment
+  region      = "eu-central-1"
+  vpc_cidr    = var.vpc_cidr_blocks["eu-central-1"]
 }
 
 module "vpc_ap_south_1" {
   source    = "./modules/vpc"
   providers = { aws = aws.ap_south_1 }
-
-  environment             = var.environment
-  region                  = "ap-south-1"
-  vpc_cidr                = var.vpc_cidr_blocks["ap-south-1"]
-  availability_zones      = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
-  single_nat_gateway      = var.environment == "dev" ? true : false
-  enable_ec2_nat_instance = var.enable_ec2_nat_instance
+  # ... vpc variables ...
+    environment = var.environment
+  region      = "ap-south-1"
+  vpc_cidr    = var.vpc_cidr_blocks["ap-south-1"]
 }
 
-module "ecs_service_ap_south_1" {
-  source    = "./modules/ecs_service"
-  providers = { aws = aws.ap_south_1 }
-
-  environment            = var.environment
-  region                 = "ap-south-1"
-  vpc_id                 = module.vpc_ap_south_1.vpc_id
-  vpc_cidr               = var.vpc_cidr_blocks["ap-south-1"]
-  private_subnet_ids     = module.vpc_ap_south_1.private_subnet_ids
-  public_subnet_ids      = module.vpc_ap_south_1.public_subnet_ids
-  frontend_image         = var.frontend_images["ap-south-1"]
-  backend_image          = var.backend_images["ap-south-1"]
-  http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_ap_south_1.id
+# --- SHARED PLATFORM: US-EAST-1 ---
+resource "aws_ecs_cluster" "shared_us_east_1" {
+  provider = aws.us_east_1
+  name     = "shared-${var.environment}-us-east-1"
 }
 
-module "redis_ap_south_1" {
-  count     = var.enable_redis ? 1 : 0
-  source    = "./modules/elasticache_redis"
-  providers = { aws = aws.ap_south_1 }
-
-  environment                = var.environment
-  region                     = "ap-south-1"
-  vpc_id                     = module.vpc_ap_south_1.vpc_id
-  private_subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
-  node_type                  = var.redis_node_type
-  num_cache_nodes            = var.redis_num_cache_nodes
-  allowed_security_group_ids = [module.ecs_service_ap_south_1.service_security_group_id]
+resource "aws_lb" "shared_alb_us_east_1" {
+  provider           = aws.us_east_1
+  name               = "shared-${var.environment}-us-east-1"
+  load_balancer_type = "application"
+  subnets            = module.vpc_us_east_1.public_subnet_ids
+  security_groups    = [aws_security_group.alb_sg_us_east_1.id]
 }
 
-module "websocket_api_gateway_ap_south_1" {
-  count     = var.enable_websocket_api ? 1 : 0
-  source    = "./modules/websocket_api_gateway"
-  providers = { aws = aws.ap_south_1 }
-
-  environment           = var.environment
-  region                = "ap-south-1"
-  vpc_id                = module.vpc_ap_south_1.vpc_id
-  connect_lambda_arn    = aws_lambda_function.connect_handler_ap_south_1.arn
-  default_lambda_arn    = aws_lambda_function.start_job_handler_ap_south_1.arn
-  disconnect_lambda_arn = aws_lambda_function.connect_handler_ap_south_1.arn
-}
-
-# --- ADDED: API Gateway Lambda Permissions for ap-south-1 ---
-resource "aws_lambda_permission" "connect_handler_ap_south_1" {
-  provider      = aws.ap_south_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect_handler_ap_south_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*/$connect"
-}
-
-resource "aws_lambda_permission" "start_job_handler_ap_south_1" {
-  provider      = aws.ap_south_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.start_job_handler_ap_south_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*/$default"
-}
-# --- END OF ADDED PERMISSIONS ---
-
-# --- NEW HTTP API Gateway ---
-resource "aws_apigatewayv2_api" "http_api_ap_south_1" {
-  provider           = aws.ap_south_1
-  name               = "xelta-http-api-${var.environment}-ap-south-1"
-  protocol_type      = "HTTP"
-  cors_configuration {
-    allow_origins     = var.api_gateway_cors_origins
-    allow_methods     = var.api_gateway_cors_methods
-    allow_headers     = var.api_gateway_cors_headers
-    allow_credentials = true
+resource "aws_lb_listener" "http_us_east_1" {
+  provider          = aws.us_east_1
+  load_balancer_arn = aws_lb.shared_alb_us_east_1.arn
+  port              = 80
+  protocol          = "HTTP"
+  default_action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "404: Not Found"
+      status_code  = "404"
+    }
   }
 }
 
-resource "aws_apigatewayv2_vpc_link" "http_api_ap_south_1" {
+resource "aws_security_group" "alb_sg_us_east_1" {
+  provider    = aws.us_east_1
+  name        = "xelta-${var.environment}-alb-us-east-1"
+  description = "Allow HTTP traffic from CloudFront"
+  vpc_id      = module.vpc_us_east_1.vpc_id
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# --- SHARED PLATFORM: EU-CENTRAL-1 ---
+resource "aws_ecs_cluster" "shared_eu_central_1" {
+  provider = aws.eu_central_1
+  name     = "shared-${var.environment}-eu-central-1"
+}
+
+resource "aws_lb" "shared_alb_eu_central_1" {
+  provider           = aws.eu_central_1
+  name               = "shared-${var.environment}-eu-central-1"
+  load_balancer_type = "application"
+  subnets            = module.vpc_eu_central_1.public_subnet_ids
+  security_groups    = [aws_security_group.alb_sg_eu_central_1.id]
+}
+
+resource "aws_lb_listener" "http_eu_central_1" {
+  provider          = aws.eu_central_1
+  load_balancer_arn = aws_lb.shared_alb_eu_central_1.arn
+  port              = 80
+  protocol          = "HTTP"
+  default_action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "404: Not Found"
+      status_code  = "404"
+    }
+  }
+}
+
+resource "aws_security_group" "alb_sg_eu_central_1" {
+  provider    = aws.eu_central_1
+  name        = "xelta-${var.environment}-alb-eu-central-1"
+  description = "Allow HTTP traffic from CloudFront"
+  vpc_id      = module.vpc_eu_central_1.vpc_id
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# --- SHARED PLATFORM: AP-SOUTH-1 ---
+resource "aws_ecs_cluster" "shared_ap_south_1" {
+  provider = aws.ap_south_1
+  name     = "shared-${var.environment}-ap-south-1"
+}
+
+resource "aws_lb" "shared_alb_ap_south_1" {
   provider           = aws.ap_south_1
-  name               = "xelta-http-api-${var.environment}-ap-south-1-vpclink"
-  subnet_ids         = module.vpc_ap_south_1.private_subnet_ids
-  security_group_ids = [aws_security_group.http_api_vpclink_sg_ap_south_1.id]
+  name               = "shared-${var.environment}-ap-south-1"
+  load_balancer_type = "application"
+  subnets            = module.vpc_ap_south_1.public_subnet_ids
+  security_groups    = [aws_security_group.alb_sg_ap_south_1.id]
 }
 
-resource "aws_apigatewayv2_integration" "http_api_ap_south_1" {
-  provider             = aws.ap_south_1
-  api_id               = aws_apigatewayv2_api.http_api_ap_south_1.id
-  integration_type     = "HTTP_PROXY"
-  integration_uri      = module.ecs_service_ap_south_1.backend_nlb_listener_arn
-  integration_method   = "ANY"
-  connection_type      = "VPC_LINK"
-  connection_id        = aws_apigatewayv2_vpc_link.http_api_ap_south_1.id
+resource "aws_lb_listener" "http_ap_south_1" {
+  provider          = aws.ap_south_1
+  load_balancer_arn = aws_lb.shared_alb_ap_south_1.arn
+  port              = 80
+  protocol          = "HTTP"
+  default_action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "404: Not Found"
+      status_code  = "404"
+    }
+  }
 }
 
-resource "aws_apigatewayv2_route" "http_api_ap_south_1" {
-  provider  = aws.ap_south_1
-  api_id    = aws_apigatewayv2_api.http_api_ap_south_1.id
-  route_key = "ANY /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.http_api_ap_south_1.id}"
-}
-
-resource "aws_apigatewayv2_stage" "http_api_ap_south_1" {
+resource "aws_security_group" "alb_sg_ap_south_1" {
   provider    = aws.ap_south_1
-  api_id      = aws_apigatewayv2_api.http_api_ap_south_1.id
-  name        = "$default"
-  auto_deploy = true
+  name        = "xelta-${var.environment}-alb-ap-south-1"
+  description = "Allow HTTP traffic from CloudFront"
+  vpc_id      = module.vpc_ap_south_1.vpc_id
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
+
+# --- Xelta Application ---
+module "xelta_us_east_1" {
+  source = "./apps/xelta"
+  providers = { aws = aws.us_east_1 }
+
+  enable_xelta                 = var.enable_xelta
+  environment                  = var.environment
+  region                       = "us-east-1"
+  frontend_image               = var.frontend_images["us-east-1"]
+  backend_image                = var.backend_images["us-east-1"]
+  vpc_id                       = module.vpc_us_east_1.vpc_id
+  private_subnet_ids           = module.vpc_us_east_1.private_subnet_ids
+  shared_cluster_id            = aws_ecs_cluster.shared_us_east_1.id
+  shared_cluster_name          = aws_ecs_cluster.shared_us_east_1.name
+  shared_listener_arn          = aws_lb_listener.http_us_east_1.arn
+  shared_alb_security_group_id = aws_security_group.alb_sg_us_east_1.id
+}
+
+module "xelta_eu_central_1" {
+  source = "./apps/xelta"
+  providers = { aws = aws.eu_central_1 }
+
+  enable_xelta                 = var.enable_xelta
+  environment                  = var.environment
+  region                       = "eu-central-1"
+  frontend_image               = var.frontend_images["eu-central-1"]
+  backend_image                = var.backend_images["eu-central-1"]
+  vpc_id                       = module.vpc_eu_central_1.vpc_id
+  private_subnet_ids           = module.vpc_eu_central_1.private_subnet_ids
+  shared_cluster_id            = aws_ecs_cluster.shared_eu_central_1.id
+  shared_cluster_name          = aws_ecs_cluster.shared_eu_central_1.name
+  shared_listener_arn          = aws_lb_listener.http_eu_central_1.arn
+  shared_alb_security_group_id = aws_security_group.alb_sg_eu_central_1.id
+}
+
+module "xelta_ap_south_1" {
+  source = "./apps/xelta"
+  providers = { aws = aws.ap_south_1 }
+
+  enable_xelta                 = var.enable_xelta
+  environment                  = var.environment
+  region                       = "ap-south-1"
+  frontend_image               = var.frontend_images["ap-south-1"]
+  backend_image                = var.backend_images["ap-south-1"]
+  vpc_id                       = module.vpc_ap_south_1.vpc_id
+  private_subnet_ids           = module.vpc_ap_south_1.private_subnet_ids
+  shared_cluster_id            = aws_ecs_cluster.shared_ap_south_1.id
+  shared_cluster_name          = aws_ecs_cluster.shared_ap_south_1.name
+  shared_listener_arn          = aws_lb_listener.http_ap_south_1.arn
+  shared_alb_security_group_id = aws_security_group.alb_sg_ap_south_1.id
+}
+
+# --- CDN Module (Now correctly wired to shared ALBs) ---
+module "cdn" {
+  source      = "./modules/cdn"
+  environment = var.environment
+  domain_name = var.domain_name
+  # ... other cdn variables ...
+  route53_zone_id = data.aws_route53_zone.main.zone_id
+  waf_web_acl_arn = module.waf.waf_arn
+
+  origins = {
+    "us-east-1"    = aws_lb.shared_alb_us_east_1.dns_name
+    "eu-central-1" = aws_lb.shared_alb_eu_central_1.dns_name
+    "ap-south-1"   = aws_lb.shared_alb_ap_south_1.dns_name
+  }
 }
