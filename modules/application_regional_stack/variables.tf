@@ -24,20 +24,6 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
-variable "ecs_cluster_id" {
-  description = "ID of the shared ECS Cluster"
-  type        = string
-}
-
-variable "ecs_cluster_name" {
-  description = "Name of the shared ECS Cluster"
-  type        = string
-}
-
-variable "ecs_task_execution_role_arn" {
-  description = "ARN of the shared ECS task execution role"
-  type        = string
-}
 
 variable "frontend_alb_listener_arn" {
   description = "ARN of the shared Frontend ALB Listener"
@@ -60,10 +46,6 @@ variable "backend_nlb_dns_name" {
   type        = string
 }
 
-variable "backend_nlb_listener_arn" {
-  description = "ARN of the shared Backend NLB Listener"
-  type        = string
-}
 
 variable "alb_security_group_id" {
   description = "ID of the shared ALB Security Group"
@@ -162,4 +144,16 @@ variable "lambda_start_job_zip_path" {
 variable "lambda_worker_zip_path" {
   description = "Path to the worker lambda zip file"
   type        = string
+}
+
+variable "lb_path_pattern" {
+  description = "Path pattern for ALB routing (e.g. /api/*)"
+  type        = string
+  default     = "/*"
+}
+
+variable "lb_priority" {
+  description = "Priority for ALB listener rule"
+  type        = number
+  default     = 100
 }
