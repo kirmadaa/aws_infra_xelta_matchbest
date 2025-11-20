@@ -30,30 +30,8 @@ variable "frontend_alb_listener_arn" {
   type        = string
 }
 
-variable "backend_nlb_arn" {
-  description = "ARN of the shared Backend NLB"
-  type        = string
-}
-
-variable "app_port" {
-  description = "Port for the application backend listener on the shared NLB"
-  type        = number
-  default     = 8080
-}
-
-variable "backend_nlb_dns_name" {
-  description = "DNS name of the shared Backend NLB"
-  type        = string
-}
-
-
 variable "alb_security_group_id" {
   description = "ID of the shared ALB Security Group"
-  type        = string
-}
-
-variable "nlb_security_group_id" {
-  description = "ID of the shared NLB Security Group"
   type        = string
 }
 

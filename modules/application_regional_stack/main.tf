@@ -215,7 +215,7 @@ resource "aws_lambda_function" "worker" {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.jobs.name
       S3_BUCKET      = aws_s3_bucket.results.id
-      BACKEND_API_ENDPOINT   = "http://${var.backend_nlb_dns_name}:8080"
+      BACKEND_API_ENDPOINT   = "http://${aws_lb.backend_nlb.dns_name}:8080"
       WEBSOCKET_API_ENDPOINT = var.enable_websocket_api ? module.websocket_api_gateway[0].api_endpoint : ""
     }
   }
@@ -262,7 +262,7 @@ resource "aws_security_group" "ecs_service" {
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
-    security_groups = [var.nlb_security_group_id]
+    security_groups = [aws_security_group.nlb_sg.id]
   }
 
   egress {
@@ -372,7 +372,69 @@ resource "aws_lb_listener_rule" "frontend_routing" {
 }
 
 
-# Backend Task Def & Service
+# ==========================================
+# Team-Specific Internal NLB
+# ==========================================
+
+# Security Group for this team's NLB
+resource "aws_security_group" "nlb_sg" {
+  name        = "${var.app_name}-${var.environment}-${var.region}-nlb"
+  description = "Allow TCP traffic from VPC for team backend"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.selected.cidr_block]
+    description = "Allow internal traffic"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound"
+  }
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-nlb-sg"
+    Environment = var.environment
+  }
+}
+
+data "aws_vpc" "selected" {
+  id = var.vpc_id
+}
+
+# Team-Specific NLB
+resource "aws_lb" "backend_nlb" {
+  name               = "${var.app_name}-${var.environment}-${var.region}-nlb"
+  internal           = true
+  load_balancer_type = "network"
+  subnets            = var.private_subnet_ids
+
+  tags = {
+    Name        = "${var.app_name}-${var.environment}-backend-nlb"
+    Environment = var.environment
+  }
+}
+
+# Listener on team's NLB
+resource "aws_lb_listener" "backend_tcp" {
+  load_balancer_arn = aws_lb.backend_nlb.arn
+  port              = 8080
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend_tcp.arn
+  }
+}
+
+
+# Backend Task Definition
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.app_name}-${var.environment}-backend"
   network_mode             = "awsvpc"
@@ -430,28 +492,6 @@ resource "aws_lb_target_group" "backend_tcp" {
   vpc_id      = var.vpc_id
   target_type = "ip"
   lifecycle { create_before_destroy = true }
-}
-
-# For NLB, we can't easily do host-based routing.
-# We assume the shared NLB listener forwards to a target group.
-# But wait, NLB listeners can only forward to ONE target group.
-# If we share the NLB, we can't easily share the listener for multiple apps unless we use different ports.
-# For this POC, we will assume the shared NLB listener routes to THIS app's target group.
-# This is a limitation of NLBs compared to ALBs.
-# To fix this properly, we'd need a listener per app on the NLB, or use ALB for backend too (grpc/http).
-# For now, we will attach the listener rule? No, NLB doesn't have rules.
-# We have to associate the listener with the target group.
-# Since the listener is shared, we can't easily change its default action here without conflict.
-# Create a dedicated listener for this app on the shared NLB
-resource "aws_lb_listener" "backend_tcp_app" {
-  load_balancer_arn = var.backend_nlb_arn
-  port              = var.app_port
-  protocol          = "TCP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend_tcp.arn
-  }
 }
 
 # ... (Redis, Route53, etc. remain similar but using shared VPC)
@@ -531,7 +571,7 @@ resource "aws_apigatewayv2_vpc_link" "http_api" {
 resource "aws_apigatewayv2_integration" "http_api" {
   api_id               = aws_apigatewayv2_api.http_api.id
   integration_type     = "HTTP_PROXY"
-  integration_uri      = aws_lb_listener.backend_tcp_app.arn
+  integration_uri      = aws_lb_listener.backend_tcp.arn
   integration_method   = "ANY"
   connection_type      = "VPC_LINK"
   connection_id        = aws_apigatewayv2_vpc_link.http_api.id

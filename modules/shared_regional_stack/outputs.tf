@@ -23,19 +23,6 @@ output "frontend_alb_listener_arn" {
   value = aws_lb_listener.frontend_http.arn
 }
 
-output "backend_nlb_arn" {
-  value = aws_lb.backend_nlb.arn
-}
-
-output "backend_nlb_dns_name" {
-  value = aws_lb.backend_nlb.dns_name
-}
-
-
 output "alb_security_group_id" {
   value = aws_security_group.alb_sg.id
-}
-
-output "nlb_security_group_id" {
-  value = aws_security_group.nlb_sg.id
 }

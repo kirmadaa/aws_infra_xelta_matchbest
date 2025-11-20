@@ -64,10 +64,7 @@ module "us_east_1_stack" {
   vpc_id                      = module.shared_us_east_1.vpc_id
   private_subnet_ids          = module.shared_us_east_1.private_subnet_ids
   frontend_alb_listener_arn   = module.shared_us_east_1.frontend_alb_listener_arn
-  backend_nlb_dns_name        = module.shared_us_east_1.backend_nlb_dns_name
-  backend_nlb_arn             = module.shared_us_east_1.backend_nlb_arn
   alb_security_group_id       = module.shared_us_east_1.alb_security_group_id
-  nlb_security_group_id       = module.shared_us_east_1.nlb_security_group_id
   
   # App Specific Inputs
   frontend_image            = var.frontend_images["us-east-1"]
@@ -86,11 +83,6 @@ module "us_east_1_stack" {
   lambda_connect_zip_path   = "${path.module}/lambda/connect.zip"
   lambda_start_job_zip_path = "${path.module}/lambda/start_job.zip"
   lambda_worker_zip_path    = "${path.module}/lambda/worker.zip"
-
-  # Routing & Ports
-  app_port        = 8080
-  lb_path_pattern = "/*"
-  lb_priority     = 100
 }
 
 # --- EU-CENTRAL-1 Stack ---
@@ -109,10 +101,7 @@ module "eu_central_1_stack" {
   vpc_id                      = module.shared_eu_central_1.vpc_id
   private_subnet_ids          = module.shared_eu_central_1.private_subnet_ids
   frontend_alb_listener_arn   = module.shared_eu_central_1.frontend_alb_listener_arn
-  backend_nlb_dns_name        = module.shared_eu_central_1.backend_nlb_dns_name
-  backend_nlb_arn             = module.shared_eu_central_1.backend_nlb_arn
   alb_security_group_id       = module.shared_eu_central_1.alb_security_group_id
-  nlb_security_group_id       = module.shared_eu_central_1.nlb_security_group_id
 
   # App Specific Inputs
   frontend_image            = var.frontend_images["eu-central-1"]
@@ -131,11 +120,6 @@ module "eu_central_1_stack" {
   lambda_connect_zip_path   = "${path.module}/lambda/connect.zip"
   lambda_start_job_zip_path = "${path.module}/lambda/start_job.zip"
   lambda_worker_zip_path    = "${path.module}/lambda/worker.zip"
-
-  # Routing & Ports
-  app_port        = 8080
-  lb_path_pattern = "/*"
-  lb_priority     = 100
 }
 
 # --- AP-SOUTH-1 Stack ---
@@ -154,10 +138,7 @@ module "ap_south_1_stack" {
   vpc_id                      = module.shared_ap_south_1.vpc_id
   private_subnet_ids          = module.shared_ap_south_1.private_subnet_ids
   frontend_alb_listener_arn   = module.shared_ap_south_1.frontend_alb_listener_arn
-  backend_nlb_dns_name        = module.shared_ap_south_1.backend_nlb_dns_name
-  backend_nlb_arn             = module.shared_ap_south_1.backend_nlb_arn
   alb_security_group_id       = module.shared_ap_south_1.alb_security_group_id
-  nlb_security_group_id       = module.shared_ap_south_1.nlb_security_group_id
 
   # App Specific Inputs
   frontend_image            = var.frontend_images["ap-south-1"]
