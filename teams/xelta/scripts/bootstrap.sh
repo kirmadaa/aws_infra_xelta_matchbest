@@ -22,11 +22,11 @@ fi
 
 # Check prerequisites
 echo "[1/6] Checking prerequisites..."
-command -v terraform >/dev/null 2D&1 || { echo "Error: terraform not found"; exit 1; }
-command -v aws >/dev/null 2D&1 || { echo "Error: aws CLI not found"; exit 1; }
+command -v terraform >/dev/null 2>&1 || { echo "Error: terraform not found"; exit 1; }
+command -v aws >/dev/null 2>&1 || { echo "Error: aws CLI not found"; exit 1; }
 
 # Verify AWS credentials
-aws sts get-caller-identity >/dev/null 2D&1 || { echo "Error: AWS credentials not configured"; exit 1; }
+aws sts get-caller-identity >/dev/null 2>&1 || { echo "Error: AWS credentials not configured"; exit 1; }
 echo "✓ Prerequisites OK"
 echo ""
 

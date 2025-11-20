@@ -42,77 +42,23 @@ resource "aws_iam_role_policy" "lambda_edge_logs" {
 
 # --- CORRECTED Lambda@Edge Function ---
 data "archive_file" "lambda_edge_zip" {
-  type = "zip"
+  type        = "zip"
   source {
-    content = <<-EOT
+    content = file("${path.module}/country-mapping.js")
+    filename = "country-mapping.js"
+  }
+  source {
+    content  = <<EOT
 'use strict';
 
-exports.handler = (event, context, callback) => {
-    const request = event.Records[0].cf.request;
-    
+const { regionMapping, countryToContinent, defaultRegion } = require('./country-mapping');
+
+exports.handler = async (event, context, callback) => {
     try {
-        // Continent to region mapping (must match your origin IDs)
-        const regionMapping = {
-            'EU': 'eu-central-1',
-            'AS': 'ap-south-1',
-            'NA': 'us-east-1',
-            'SA': 'us-east-1',
-            'OC': 'ap-south-1',
-            'AF': 'eu-central-1'
-        };
-        
-        // Country to continent mapping
-        const countryToContinent = {
-            // Europe
-            'DE': 'EU', 'FR': 'EU', 'GB': 'EU', 'IT': 'EU', 'ES': 'EU', 'PL': 'EU', 
-            'RO': 'EU', 'NL': 'EU', 'BE': 'EU', 'GR': 'EU', 'CZ': 'EU', 'PT': 'EU',
-            'SE': 'EU', 'HU': 'EU', 'AT': 'EU', 'CH': 'EU', 'BG': 'EU', 'DK': 'EU',
-            'FI': 'EU', 'SK': 'EU', 'IE': 'EU', 'HR': 'EU', 'LT': 'EU', 'SI': 'EU',
-            'LV': 'EU', 'EE': 'EU', 'CY': 'EU', 'LU': 'EU', 'MT': 'EU', 'IS': 'EU',
-            'NO': 'EU', 'RS': 'EU', 'BA': 'EU', 'MK': 'EU', 'AL': 'EU', 'ME': 'EU',
-            'XK': 'EU', 'MD': 'EU', 'UA': 'EU', 'BY': 'EU', 'RU': 'EU',
-            
-            // Asia
-            'IN': 'AS', 'CN': 'AS', 'JP': 'AS', 'KR': 'AS', 'ID': 'AS', 'PK': 'AS',
-            'BD': 'AS', 'PH': 'AS', 'VN': 'AS', 'TR': 'AS', 'IR': 'AS', 'TH': 'AS',
-            'MM': 'AS', 'SA': 'AS', 'MY': 'AS', 'UZ': 'AS', 'IQ': 'AS', 'AF': 'AS',
-            'NP': 'AS', 'YE': 'AS', 'KZ': 'AS', 'KH': 'AS', 'JO': 'AS', 'AE': 'AS',
-            'IL': 'AS', 'HK': 'AS', 'LA': 'AS', 'SG': 'AS', 'OM': 'AS', 'KW': 'AS',
-            'QA': 'AS', 'BH': 'AS', 'MN': 'AS', 'TM': 'AS', 'GE': 'AS', 'AM': 'AS',
-            'AZ': 'AS', 'SY': 'AS', 'LB': 'AS', 'PS': 'AS', 'BT': 'AS', 'MV': 'AS',
-            'LK': 'AS', 'TJ': 'AS', 'KG': 'AS', 'TW': 'AS', 'MO': 'AS', 'BN': 'AS',
-            'TL': 'AS',
-            
-            // North America
-            'US': 'NA', 'CA': 'NA', 'MX': 'NA', 'GT': 'NA', 'CU': 'NA', 'DO': 'NA',
-            'HT': 'NA', 'HN': 'NA', 'NI': 'NA', 'CR': 'NA', 'PA': 'NA', 'BZ': 'NA',
-            'SV': 'NA', 'JM': 'NA', 'TT': 'NA', 'BS': 'NA', 'BB': 'NA', 'LC': 'NA',
-            'GD': 'NA', 'VC': 'NA', 'AG': 'NA', 'DM': 'NA', 'KN': 'NA',
-            
-            // South America
-            'BR': 'SA', 'AR': 'SA', 'CO': 'SA', 'PE': 'SA', 'VE': 'SA', 'CL': 'SA',
-            'EC': 'SA', 'BO': 'SA', 'PY': 'SA', 'UY': 'SA', 'GY': 'SA', 'SR': 'SA',
-            'GF': 'SA',
-            
-            // Oceania
-            'AU': 'OC', 'NZ': 'OC', 'PG': 'OC', 'FJ': 'OC', 'SB': 'OC', 'VU': 'OC',
-            'NC': 'OC', 'PF': 'OC', 'WS': 'OC', 'KI': 'OC', 'FM': 'OC', 'TO': 'OC',
-            'MH': 'OC', 'PW': 'OC', 'CK': 'OC', 'NU': 'OC', 'TK': 'OC', 'TV': 'OC',
-            'NR': 'OC',
-            
-            // Africa
-            'NG': 'AF', 'ET': 'AF', 'EG': 'AF', 'CD': 'AF', 'TZ': 'AF', 'ZA': 'AF',
-            'KE': 'AF', 'UG': 'AF', 'DZ': 'AF', 'SD': 'AF', 'MA': 'AF', 'AO': 'AF',
-            'MZ': 'AF', 'GH': 'AF', 'MG': 'AF', 'CM': 'AF', 'CI': 'AF', 'NE': 'AF',
-            'BF': 'AF', 'ML': 'AF', 'MW': 'AF', 'ZM': 'AF', 'SN': 'AF', 'SO': 'AF',
-            'TN': 'AF', 'SS': 'AF', 'TD': 'AF', 'LY': 'AF', 'LR': 'AF', 'SL': 'AF',
-            'TG': 'AF', 'CF': 'AF', 'MR': 'AF', 'ER': 'AF', 'GM': 'AF', 'BW': 'AF',
-            'GA': 'AF', 'LS': 'AF', 'GW': 'AF', 'GQ': 'AF', 'SZ': 'AF', 'DJ': 'AF',
-            'RE': 'AF', 'KM': 'AF', 'CV': 'AF', 'SC': 'AF', 'ST': 'AF'
-        };
+        const request = event.Records[0].cf.request;
         
         // Default to ap-south-1
-        let targetOriginId = 'ap-south-1';
+        let targetOriginId = defaultRegion;
         let countryCode = 'Unknown';
         
         // Get country from CloudFront headers
@@ -134,9 +80,9 @@ exports.handler = (event, context, callback) => {
         // No need to manually delete or set request.headers['host']
 
         console.log(JSON.stringify({
-            timestamp: new Date().toISOString(),
-            countryCode: countryCode,
-            targetOriginId: targetOriginId,
+            message: 'Request routed',
+            country: countryCode,
+            targetOrigin: targetOriginId,
             originalUri: request.uri,
             userAgent: request.headers['user-agent'] ? request.headers['user-agent'][0].value : 'Unknown'
         }));

@@ -1,94 +1,157 @@
-name: Deploy Terraform Infrastructure
+name: Deploy Infrastructure
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'terraform/**'
+      - develop
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       environment:
         description: 'Environment to deploy'
         required: true
-        default: 'prod'
+        default: 'dev'
         type: choice
         options:
+          - dev
+          - uat
           - prod
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+env:
+  TF_VERSION: '1.6.0'
+  AWS_REGION: 'us-east-1'
 
 jobs:
-  deploy-dev:
-    name: 'Deploy Dev Environment'
-    if: github.event_name == 'push'
+  terraform:
+    name: 'Terraform ${{ github.event.inputs.action || 'validate' }}'
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    defaults:
+      run:
+        working-directory: ./teams/xelta
+    
     permissions:
-      id-token: write
+      id-token: write   # Required for AWS OIDC
       contents: read
-
+      pull-requests: write
+    
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_DEV }}
-          aws-region: eu-west-3
-
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-Terraform
+      
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.13.3
-
+          terraform_version: ${{ env.TF_VERSION }}
+      
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+      
       - name: Terraform Init
         id: init
-        run: terraform init
-        working-directory: ./terraform/environments/dev/region_eu-west-3
-
+        run: |
+          terraform init \
+            -backend-config=environments/${{ github.event.inputs.environment || 'dev' }}/${{ github.event.inputs.environment || 'dev' }}.tfbackend
+      
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+      
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/dev/region_eu-west-3
-
-      - name: Terraform Apply
-        id: apply
-        run: terraform apply -auto-approve -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/dev/region_eu-west-3
-
-  deploy-prod:
-    name: 'Deploy Prod Environment'
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        if: github.event_name == 'pull_request' || github.event.inputs.action == 'plan'
+        run: |
+          terraform plan \
+            -var-file=environments/${{ github.event.inputs.environment || 'dev' }}/variables.tfvars \
+            -no-color \
+            -input=false \
+            -out=tfplan
+        continue-on-error: true
+      
+      - name: Update Pull Request
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "${{ steps.plan.outputs.stdout }}"
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_PROD }}
-          aws-region: eu-west-3
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.13.3
-
-      - name: Terraform Init
-        id: init
-        run: terraform init
-        working-directory: ./terraform/environments/prod/region_eu-west-3
-
-      - name: Terraform Plan
-        id: plan
-        run: terraform plan -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/prod/region_eu-west-3
-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            
+            <details><summary>Show Plan</summary>
+            
+            \`\`\`terraform
+            ${process.env.PLAN}
+            \`\`\`
+            
+            </details>
+            
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+      
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+      
       - name: Terraform Apply
-        id: apply
-        run: terraform apply -auto-approve -no-color -var-file=terraform.tfvars
-        working-directory: ./terraform/environments/prod/region_eu-west-3
+        if: |
+          github.ref == 'refs/heads/main' && 
+          github.event_name == 'push' ||
+          github.event.inputs.action == 'apply'
+        run: |
+          terraform apply \
+            -var-file=environments/${{ github.event.inputs.environment || 'dev' }}/variables.tfvars \
+            -auto-approve \
+            -input=false
+      
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          terraform destroy \
+            -var-file=environments/${{ github.event.inputs.environment || 'dev' }}/variables.tfvars \
+            -auto-approve \
+            -input=false
+      
+      - name: Terraform Output
+        if: github.event.inputs.action == 'apply'
+        id: output
+        run: terraform output -json > terraform-outputs.json
+      
+      - name: Upload Terraform Outputs
+        if: github.event.inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: ./teams/xelta/terraform-outputs.json
+          retention-days: 30
