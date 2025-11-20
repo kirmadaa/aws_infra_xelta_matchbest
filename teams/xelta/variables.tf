@@ -97,3 +97,9 @@ variable "enable_ec2_nat_instance" {
   type        = bool
   default     = false
 }
+
+variable "enable_infrastructure" {
+  description = "Enable or disable the entire infrastructure"
+  type        = bool
+  default     = true
+}

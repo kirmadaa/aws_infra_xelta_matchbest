@@ -19,9 +19,9 @@ enable_ec2_nat_instance = true
 
 # Container Images
 frontend_images = {
-  "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/frontend:us-east-1-c9a5e65dab94cb0fd1bccdae838e00f86ae0f63e"
-  "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/frontend:eu-central-1-c9a5e65dab94cb0fd1bccdae838e00f86ae0f63e"
-  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-2c9a5e65dab94cb0fd1bccdae838e00f86ae0f63e"
+  "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/frontend:us-east-1-659b026f4bcc704188e68e5cfa35e290fb575a31"
+  "eu-central-1" = "811259913050.dkr.ecr.eu-central-1.amazonaws.com/xelta/frontend:eu-central-1-659b026f4bcc704188e68e5cfa35e290fb575a31"
+  "ap-south-1"   = "811259913050.dkr.ecr.ap-south-1.amazonaws.com/xelta/frontend:ap-south-1-659b026f4bcc704188e68e5cfa35e290fb575a31"
 }
 backend_images = {
   "us-east-1"    = "811259913050.dkr.ecr.us-east-1.amazonaws.com/xelta/backend:us-east-1-5f1ddfe851bff7a5cab7dcdc82a62c0418f0c0e5"
@@ -37,3 +37,5 @@ api_gateway_cors_origins = [
 ]
 api_gateway_cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 api_gateway_cors_headers = ["Content-Type", "Authorization"]
+
+enable_infrastructure = true

@@ -1,3 +1,8 @@
+variable "app_name" {
+  description = "The application name (e.g. xelta)"
+  type        = string
+}
+
 variable "environment" {
   description = "Environment name (e.g., 'dev', 'uat', 'prod')"
   type        = string

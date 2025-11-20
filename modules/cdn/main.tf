@@ -2,7 +2,7 @@
 
 # --- Lambda@Edge IAM Role ---
 resource "aws_iam_role" "lambda_edge" {
-  name = "xelta-${var.environment}-lambda-edge-role"
+  name = "${var.app_name}-${var.environment}-lambda-edge-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -22,7 +22,7 @@ resource "aws_iam_role" "lambda_edge" {
 }
 
 resource "aws_iam_role_policy" "lambda_edge_logs" {
-  name = "xelta-${var.environment}-lambda-edge-logging"
+  name = "${var.app_name}-${var.environment}-lambda-edge-logging"
   role = aws_iam_role.lambda_edge.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -162,7 +162,7 @@ EOT
 resource "aws_lambda_function" "edge_router" {
   filename         = data.archive_file.lambda_edge_zip.output_path
   source_code_hash = data.archive_file.lambda_edge_zip.output_base64sha256
-  function_name    = "xelta-${var.environment}-edge-router"
+  function_name    = "${var.app_name}-${var.environment}-edge-router"
   role             = aws_iam_role.lambda_edge.arn
   handler          = "index.handler"
   runtime          = "nodejs18.x"
@@ -174,7 +174,7 @@ resource "aws_lambda_function" "edge_router" {
 resource "aws_cloudfront_distribution" "main" {
   enabled           = true
   is_ipv6_enabled   = true
-  comment           = "xelta-${var.environment}"
+  comment           = "${var.app_name}-${var.environment}"
   web_acl_id        = var.waf_web_acl_arn
 
   aliases = [var.domain_name]
@@ -230,14 +230,14 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   tags = {
-    Name        = "xelta-${var.environment}-cdn"
+    Name        = "${var.app_name}-${var.environment}-cdn"
     Environment = var.environment
   }
 }
 
 # Cache policy with CloudFront-Viewer-Country header
 resource "aws_cloudfront_cache_policy" "api_caching" {
-  name    = "xelta-${var.environment}-api-caching-policy"
+  name    = "${var.app_name}-${var.environment}-api-caching-policy"
   comment = "Cache policy for API GET/HEAD requests"
   default_ttl = 60
   max_ttl     = 300
@@ -261,7 +261,7 @@ resource "aws_cloudfront_cache_policy" "api_caching" {
 
 # Origin request policy for ALBs
 resource "aws_cloudfront_origin_request_policy" "default_alb" {
-  name    = "xelta-${var.environment}-alb-policy"
+  name    = "${var.app_name}-${var.environment}-alb-policy"
   comment = "Forward Cookies, Query Strings and necessary headers"
   cookies_config {
     cookie_behavior = "all"
