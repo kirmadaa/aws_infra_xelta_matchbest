@@ -11,14 +11,9 @@ resource "aws_secretsmanager_secret" "db_credentials" {
   name        = "xelta-${var.environment}-db-credentials"
   description = "Database credentials for xelta ${var.environment}"
 
-  # FIXED: Set recovery window to 0 to allow immediate deletion and recreation
-  recovery_window_in_days = 0
-
-  # Add lifecycle to prevent accidental deletion in production
-  lifecycle {
-    create_before_destroy = false
-    ignore_changes        = []
-  }
+  # Enforce 30-day recovery window for production safety
+  # Dev can use 7 days for faster iteration
+  recovery_window_in_days = var.environment == "dev" ? 7 : 30
 
   tags = {
     Name        = "xelta-${var.environment}-db-credentials"

@@ -10,6 +10,18 @@ resource "aws_vpc" "main" {
   }
 }
 
+# Validation: Prevent EC2 NAT instances in production
+resource "null_resource" "validate_nat_for_prod" {
+  count = var.environment == "prod" && var.enable_ec2_nat_instance ? 1 : 0
+
+  provisioner "local-exec" {
+    command = "echo 'ERROR: EC2 NAT instances are not allowed in production. Use managed NAT Gateways.' && exit 1"
+  }
+lifecycle {
+    create_before_destroy = true
+  }
+}
+
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id

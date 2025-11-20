@@ -9,19 +9,42 @@ module "vpc" {
   enable_ec2_nat_instance = var.enable_ec2_nat_instance
 }
 
+# VPC Endpoints for cost savings and security
+module "vpc_endpoints" {
+  source = "../vpc_endpoints"
+
+  environment               = var.environment
+  region                    = var.region
+  vpc_id                    = module.vpc.vpc_id
+  private_subnet_ids        = module.vpc.private_subnet_ids
+  private_route_table_ids   = module.vpc.private_route_table_ids
+
+  # Enable all endpoints by default for production-grade setup
+  enable_s3_endpoint        = true
+  enable_dynamodb_endpoint  = true
+  enable_ecr_endpoints      = true
+  enable_secrets_endpoint   = true
+}
+
 
 # --- Shared Security Groups ---
 
+# CloudFront managed prefix list for ALB restriction
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_security_group" "alb_sg" {
   name        = "shared-${var.environment}-${var.region}-alb"
-  description = "Allow HTTP traffic from VPC (for CDN)"
+  description = "Allow HTTP traffic from CloudFront only"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    cidr_blocks     = ["0.0.0.0/0"] # Open to world for now, or restrict to CloudFront
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+    description     = "Allow HTTP from CloudFront"
   }
 
   egress {
@@ -29,6 +52,7 @@ resource "aws_security_group" "alb_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound"
   }
 }
 
