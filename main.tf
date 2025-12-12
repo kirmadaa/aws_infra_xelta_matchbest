@@ -311,7 +311,7 @@ resource "aws_lambda_function" "connect_handler_us_east_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -335,7 +335,7 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -384,7 +384,7 @@ resource "aws_lambda_function" "worker_us_east_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -669,7 +669,7 @@ resource "aws_lambda_function" "connect_handler_eu_central_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -693,7 +693,7 @@ resource "aws_lambda_function" "start_job_handler_eu_central_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -724,7 +724,7 @@ resource "aws_lambda_function" "worker_eu_central_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -954,7 +954,7 @@ resource "aws_lambda_function" "connect_handler_ap_south_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -978,7 +978,7 @@ resource "aws_lambda_function" "start_job_handler_ap_south_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -1009,7 +1009,7 @@ resource "aws_lambda_function" "worker_ap_south_1" {
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
