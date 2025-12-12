@@ -63,6 +63,18 @@ resource "aws_dynamodb_table" "jobs_us_east_1" {
   }
 }
 
+resource "aws_dynamodb_table" "connections_us_east_1" {
+  provider     = aws.us_east_1
+  name         = "xelta-${var.environment}-connections-us-east-1"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "connectionId"
+
+  attribute {
+    name = "connectionId"
+    type = "S"
+  }
+}
+
 resource "aws_sqs_queue" "jobs_us_east_1" {
   provider = aws.us_east_1
   name     = "xelta-${var.environment}-jobs-us-east-1"
@@ -102,6 +114,18 @@ resource "aws_dynamodb_table" "jobs_eu_central_1" {
   }
 }
 
+resource "aws_dynamodb_table" "connections_eu_central_1" {
+  provider     = aws.eu_central_1
+  name         = "xelta-${var.environment}-connections-eu-central-1"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "connectionId"
+
+  attribute {
+    name = "connectionId"
+    type = "S"
+  }
+}
+
 resource "aws_sqs_queue" "jobs_eu_central_1" {
   provider = aws.eu_central_1
   name     = "xelta-${var.environment}-jobs-eu-central-1"
@@ -137,6 +161,18 @@ resource "aws_dynamodb_table" "jobs_ap_south_1" {
 
   attribute {
     name = "jobId"
+    type = "S"
+  }
+}
+
+resource "aws_dynamodb_table" "connections_ap_south_1" {
+  provider     = aws.ap_south_1
+  name         = "xelta-${var.environment}-connections-ap-south-1"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "connectionId"
+
+  attribute {
+    name = "connectionId"
     type = "S"
   }
 }
@@ -220,6 +256,13 @@ resource "aws_iam_policy" "lambda_policy_us_east_1" {
         Resource = aws_dynamodb_table.jobs_us_east_1.arn
       },
       {
+        Action = [
+          "dynamodb:PutItem"
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.connections_us_east_1.arn
+      },
+      {
         Action   = ["s3:PutObject"]
         Effect   = "Allow"
         Resource = "${aws_s3_bucket.results_us_east_1.arn}/*"
@@ -229,6 +272,11 @@ resource "aws_iam_policy" "lambda_policy_us_east_1" {
         Action   = ["execute-api:ManageConnections"]
         Effect   = "Allow"
         Resource = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*"
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "${aws_s3_bucket.results_us_east_1.arn}/*"
       }
     ]
   })
@@ -256,8 +304,14 @@ resource "aws_lambda_function" "connect_handler_us_east_1" {
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
+  environment {
+    variables = {
+      CONNECTIONS_TABLE = aws_dynamodb_table.connections_us_east_1.name
+    }
+  }
+
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -273,13 +327,15 @@ resource "aws_lambda_function" "start_job_handler_us_east_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_us_east_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_us_east_1.id
+      JOBS_TABLE    = aws_dynamodb_table.jobs_us_east_1.name
+      JOB_QUEUE_URL = aws_sqs_queue.jobs_us_east_1.id
+      API_ID        = module.websocket_api_gateway_us_east_1[0].api_id
+      STAGE         = module.websocket_api_gateway_us_east_1[0].stage_name
     }
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -318,16 +374,17 @@ resource "aws_lambda_function" "worker_us_east_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_us_east_1.name
-      S3_BUCKET              = aws_s3_bucket.results_us_east_1.id
-      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
-      BACKEND_API_ENDPOINT   = "http://${module.ecs_service_us_east_1.backend_nlb_dns_name}:8080"
-      WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_us_east_1[0].api_endpoint
+      JOBS_TABLE           = aws_dynamodb_table.jobs_us_east_1.name
+      OUTPUT_BUCKET        = aws_s3_bucket.results_us_east_1.id
+      BACKEND_API_ENDPOINT = module.ecs_service_us_east_1.backend_nlb_dns_name
+      PORT                 = "8080"
+      API_ID               = module.websocket_api_gateway_us_east_1[0].api_id
+      STAGE                = module.websocket_api_gateway_us_east_1[0].stage_name
     }
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -557,6 +614,13 @@ resource "aws_iam_policy" "lambda_policy_eu_central_1" {
         Resource = aws_dynamodb_table.jobs_eu_central_1.arn
       },
       {
+        Action = [
+          "dynamodb:PutItem"
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.connections_eu_central_1.arn
+      },
+      {
         Action   = ["s3:PutObject"]
         Effect   = "Allow"
         Resource = "${aws_s3_bucket.results_eu_central_1.arn}/*"
@@ -566,6 +630,11 @@ resource "aws_iam_policy" "lambda_policy_eu_central_1" {
         Action   = ["execute-api:ManageConnections"]
         Effect   = "Allow"
         Resource = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*"
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "${aws_s3_bucket.results_eu_central_1.arn}/*"
       }
     ]
   })
@@ -593,8 +662,14 @@ resource "aws_lambda_function" "connect_handler_eu_central_1" {
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
+  environment {
+    variables = {
+      CONNECTIONS_TABLE = aws_dynamodb_table.connections_eu_central_1.name
+    }
+  }
+
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -610,13 +685,15 @@ resource "aws_lambda_function" "start_job_handler_eu_central_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_eu_central_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_eu_central_1.id
+      JOBS_TABLE    = aws_dynamodb_table.jobs_eu_central_1.name
+      JOB_QUEUE_URL = aws_sqs_queue.jobs_eu_central_1.id
+      API_ID        = module.websocket_api_gateway_eu_central_1[0].api_id
+      STAGE         = module.websocket_api_gateway_eu_central_1[0].stage_name
     }
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -637,16 +714,17 @@ resource "aws_lambda_function" "worker_eu_central_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_eu_central_1.name
-      S3_BUCKET              = aws_s3_bucket.results_eu_central_1.id
-      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
-      BACKEND_API_ENDPOINT   = "http://${module.ecs_service_eu_central_1.backend_nlb_dns_name}:8080"
-      WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_eu_central_1[0].api_endpoint
+      JOBS_TABLE           = aws_dynamodb_table.jobs_eu_central_1.name
+      OUTPUT_BUCKET        = aws_s3_bucket.results_eu_central_1.id
+      BACKEND_API_ENDPOINT = module.ecs_service_eu_central_1.backend_nlb_dns_name
+      PORT                 = "8080"
+      API_ID               = module.websocket_api_gateway_eu_central_1[0].api_id
+      STAGE                = module.websocket_api_gateway_eu_central_1[0].stage_name
     }
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -821,6 +899,13 @@ resource "aws_iam_policy" "lambda_policy_ap_south_1" {
         Resource = aws_dynamodb_table.jobs_ap_south_1.arn
       },
       {
+        Action = [
+          "dynamodb:PutItem"
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.connections_ap_south_1.arn
+      },
+      {
         Action   = ["s3:PutObject"]
         Effect   = "Allow"
         Resource = "${aws_s3_bucket.results_ap_south_1.arn}/*"
@@ -830,6 +915,11 @@ resource "aws_iam_policy" "lambda_policy_ap_south_1" {
         Action   = ["execute-api:ManageConnections"]
         Effect   = "Allow"
         Resource = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*"
+      },
+      {
+        Action   = ["s3:GetObject"]
+        Effect   = "Allow"
+        Resource = "${aws_s3_bucket.results_ap_south_1.arn}/*"
       }
     ]
   })
@@ -857,8 +947,14 @@ resource "aws_lambda_function" "connect_handler_ap_south_1" {
   filename         = "lambda/connect.zip"
   source_code_hash = filebase64sha256("lambda/connect.zip")
 
+  environment {
+    variables = {
+      CONNECTIONS_TABLE = aws_dynamodb_table.connections_ap_south_1.name
+    }
+  }
+
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -874,13 +970,15 @@ resource "aws_lambda_function" "start_job_handler_ap_south_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_ap_south_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_ap_south_1.id
+      JOBS_TABLE    = aws_dynamodb_table.jobs_ap_south_1.name
+      JOB_QUEUE_URL = aws_sqs_queue.jobs_ap_south_1.id
+      API_ID        = module.websocket_api_gateway_ap_south_1[0].api_id
+      STAGE         = module.websocket_api_gateway_ap_south_1[0].stage_name
     }
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
@@ -901,16 +999,17 @@ resource "aws_lambda_function" "worker_ap_south_1" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE         = aws_dynamodb_table.jobs_ap_south_1.name
-      S3_BUCKET              = aws_s3_bucket.results_ap_south_1.id
-      # --- FIX: This is now the BASE URL. The worker code adds the path. ---
-      BACKEND_API_ENDPOINT   = "http://${module.ecs_service_ap_south_1.backend_nlb_dns_name}:8080"
-      WEBSOCKET_API_ENDPOINT = module.websocket_api_gateway_ap_south_1[0].api_endpoint
+      JOBS_TABLE           = aws_dynamodb_table.jobs_ap_south_1.name
+      OUTPUT_BUCKET        = aws_s3_bucket.results_ap_south_1.id
+      BACKEND_API_ENDPOINT = module.ecs_service_ap_south_1.backend_nlb_dns_name
+      PORT                 = "8080"
+      API_ID               = module.websocket_api_gateway_ap_south_1[0].api_id
+      STAGE                = module.websocket_api_gateway_ap_south_1[0].stage_name
     }
   }
 
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [layers]
   }
 }
 
