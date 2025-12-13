@@ -1,10 +1,3 @@
-# Data source for Route53 hosted zone
-data "aws_route53_zone" "main" {
-  name         = var.domain_name
-  private_zone = false
-}
-
-
 # Global secrets (stored in us-east-1, replicated to other regions)
 module "secrets_us_east_1" {
   source      = "./modules/secrets"
@@ -30,20 +23,18 @@ module "waf" {
   environment = var.environment
 }
 
-module "cdn" {
-  source          = "./modules/cdn"
-  environment     = var.environment
-  domain_name     = var.domain_name
-  route53_zone_id = data.aws_route53_zone.main.zone_id
-  waf_web_acl_arn = module.waf.waf_arn
+module "cloudflare_cdn" {
+  source      = "./modules/cloudflare_cdn"
+  environment = var.environment
+  domain_name = var.domain_name
+  zone_id     = var.cloudflare_zone_id
+  account_id  = var.cloudflare_account_id
 
   origins = {
     us-east-1    = module.ecs_service_us_east_1.frontend_alb_dns_name
     eu-central-1 = module.ecs_service_eu_central_1.frontend_alb_dns_name
     ap-south-1   = module.ecs_service_ap_south_1.frontend_alb_dns_name
   }
-
-  certificate_arn = module.route53_acm_us_east_1.certificate_arn
 }
 
 # ==================================
@@ -358,18 +349,6 @@ module "ecs_service_us_east_1" {
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_us_east_1.id
 }
 
-module "route53_acm_us_east_1" {
-  source    = "./modules/route53_acm"
-  providers = { aws = aws.us_east_1 }
-
-  environment     = var.environment
-  region          = "us-east-1"
-  domain_name     = var.domain_name
-  route53_zone_id = data.aws_route53_zone.main.zone_id
-
-  cdn_dns_name    = module.cdn.cdn_dns_name
-  cdn_zone_id     = module.cdn.cdn_zone_id
-}
 
 module "redis_us_east_1" {
   count     = var.enable_redis ? 1 : 0
