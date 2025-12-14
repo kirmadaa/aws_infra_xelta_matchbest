@@ -49,7 +49,7 @@ data "archive_file" "lambda_edge_zip" {
 
 exports.handler = (event, context, callback) => {
     const request = event.Records[0].cf.request;
-    
+
     try {
         // Continent to region mapping (must match your origin IDs)
         const regionMapping = {
@@ -60,18 +60,18 @@ exports.handler = (event, context, callback) => {
             'OC': 'ap-south-1',
             'AF': 'eu-central-1'
         };
-        
+
         // Country to continent mapping
         const countryToContinent = {
             // Europe
-            'DE': 'EU', 'FR': 'EU', 'GB': 'EU', 'IT': 'EU', 'ES': 'EU', 'PL': 'EU', 
+            'DE': 'EU', 'FR': 'EU', 'GB': 'EU', 'IT': 'EU', 'ES': 'EU', 'PL': 'EU',
             'RO': 'EU', 'NL': 'EU', 'BE': 'EU', 'GR': 'EU', 'CZ': 'EU', 'PT': 'EU',
             'SE': 'EU', 'HU': 'EU', 'AT': 'EU', 'CH': 'EU', 'BG': 'EU', 'DK': 'EU',
             'FI': 'EU', 'SK': 'EU', 'IE': 'EU', 'HR': 'EU', 'LT': 'EU', 'SI': 'EU',
             'LV': 'EU', 'EE': 'EU', 'CY': 'EU', 'LU': 'EU', 'MT': 'EU', 'IS': 'EU',
             'NO': 'EU', 'RS': 'EU', 'BA': 'EU', 'MK': 'EU', 'AL': 'EU', 'ME': 'EU',
             'XK': 'EU', 'MD': 'EU', 'UA': 'EU', 'BY': 'EU', 'RU': 'EU',
-            
+
             // Asia
             'IN': 'AS', 'CN': 'AS', 'JP': 'AS', 'KR': 'AS', 'ID': 'AS', 'PK': 'AS',
             'BD': 'AS', 'PH': 'AS', 'VN': 'AS', 'TR': 'AS', 'IR': 'AS', 'TH': 'AS',
@@ -82,24 +82,24 @@ exports.handler = (event, context, callback) => {
             'AZ': 'AS', 'SY': 'AS', 'LB': 'AS', 'PS': 'AS', 'BT': 'AS', 'MV': 'AS',
             'LK': 'AS', 'TJ': 'AS', 'KG': 'AS', 'TW': 'AS', 'MO': 'AS', 'BN': 'AS',
             'TL': 'AS',
-            
+
             // North America
             'US': 'NA', 'CA': 'NA', 'MX': 'NA', 'GT': 'NA', 'CU': 'NA', 'DO': 'NA',
             'HT': 'NA', 'HN': 'NA', 'NI': 'NA', 'CR': 'NA', 'PA': 'NA', 'BZ': 'NA',
             'SV': 'NA', 'JM': 'NA', 'TT': 'NA', 'BS': 'NA', 'BB': 'NA', 'LC': 'NA',
             'GD': 'NA', 'VC': 'NA', 'AG': 'NA', 'DM': 'NA', 'KN': 'NA',
-            
+
             // South America
             'BR': 'SA', 'AR': 'SA', 'CO': 'SA', 'PE': 'SA', 'VE': 'SA', 'CL': 'SA',
             'EC': 'SA', 'BO': 'SA', 'PY': 'SA', 'UY': 'SA', 'GY': 'SA', 'SR': 'SA',
             'GF': 'SA',
-            
+
             // Oceania
             'AU': 'OC', 'NZ': 'OC', 'PG': 'OC', 'FJ': 'OC', 'SB': 'OC', 'VU': 'OC',
             'NC': 'OC', 'PF': 'OC', 'WS': 'OC', 'KI': 'OC', 'FM': 'OC', 'TO': 'OC',
             'MH': 'OC', 'PW': 'OC', 'CK': 'OC', 'NU': 'OC', 'TK': 'OC', 'TV': 'OC',
             'NR': 'OC',
-            
+
             // Africa
             'NG': 'AF', 'ET': 'AF', 'EG': 'AF', 'CD': 'AF', 'TZ': 'AF', 'ZA': 'AF',
             'KE': 'AF', 'UG': 'AF', 'DZ': 'AF', 'SD': 'AF', 'MA': 'AF', 'AO': 'AF',
@@ -110,21 +110,21 @@ exports.handler = (event, context, callback) => {
             'GA': 'AF', 'LS': 'AF', 'GW': 'AF', 'GQ': 'AF', 'SZ': 'AF', 'DJ': 'AF',
             'RE': 'AF', 'KM': 'AF', 'CV': 'AF', 'SC': 'AF', 'ST': 'AF'
         };
-        
+
         // Default to ap-south-1
         let targetOriginId = 'ap-south-1';
         let countryCode = 'Unknown';
-        
+
         // Get country from CloudFront headers
         if (request.headers['cloudfront-viewer-country']) {
             countryCode = request.headers['cloudfront-viewer-country'][0].value;
             const continent = countryToContinent[countryCode];
-            
+
             if (continent && regionMapping[continent]) {
                 targetOriginId = regionMapping[continent];
             }
         }
-        
+
         // CRITICAL FIX: Modify the originId, do not replace the origin object.
         // This tells CloudFront which pre-configured origin to route to.
         request.origin.custom.originId = targetOriginId;
@@ -140,15 +140,15 @@ exports.handler = (event, context, callback) => {
             originalUri: request.uri,
             userAgent: request.headers['user-agent'] ? request.headers['user-agent'][0].value : 'Unknown'
         }));
-        
+
         callback(null, request);
-        
+
     } catch (error) {
         console.error('Lambda@Edge Error:', {
             error: error.message,
             stack: error.stack
         });
-        
+
         // On error, let it proceed to the default origin (ap-south-1)
         callback(null, request);
     }
@@ -199,9 +199,9 @@ resource "aws_cloudfront_distribution" "main" {
   default_cache_behavior {
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods  = ["GET", "HEAD", "OPTIONS"]
-    
+
     # This is just the default; the Lambda will override it
-    target_origin_id = "ap-south-1" 
+    target_origin_id = "ap-south-1"
 
     origin_request_policy_id = aws_cloudfront_origin_request_policy.default_alb.id
     cache_policy_id          = aws_cloudfront_cache_policy.api_caching.id
@@ -250,7 +250,7 @@ resource "aws_cloudfront_cache_policy" "api_caching" {
       header_behavior = "whitelist"
       headers {
         # This is required so the Lambda@Edge has the header to inspect
-        items = ["CloudFront-Viewer-Country"] 
+        items = ["CloudFront-Viewer-Country"]
       }
     }
     query_strings_config {
@@ -271,9 +271,9 @@ resource "aws_cloudfront_origin_request_policy" "default_alb" {
     headers {
       items = [
         # Forward the country header to the origin ALB
-        "CloudFront-Viewer-Country", 
-        "User-Agent", 
-        "Accept", 
+        "CloudFront-Viewer-Country",
+        "User-Agent",
+        "Accept",
         "Accept-Language",
         # "Accept-Encoding", # <-- Correctly commented out
         "Content-Type"

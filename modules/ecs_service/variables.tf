@@ -42,3 +42,15 @@ variable "public_subnet_ids" {
   description = "List of public subnet IDs for the ALB"
   type        = list(string)
 }
+
+variable "enable_cloudflare" {
+  description = "Enable Cloudflare CDN (affects ALB security group rules)"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_ip_ranges" {
+  description = "List of Cloudflare IP CIDR blocks"
+  type        = list(string)
+  default     = []
+}

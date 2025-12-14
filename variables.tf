@@ -97,3 +97,28 @@ variable "enable_ec2_nat_instance" {
   type        = bool
   default     = false
 }
+
+variable "enable_cloudflare" {
+  description = "Enable Cloudflare CDN (replaces CloudFront)"
+  type        = bool
+  default     = false
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API Token"
+  type        = string
+  sensitive   = true
+  default     = "" # Optional if not enabled
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare Zone ID"
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare Account ID"
+  type        = string
+  default     = ""
+}

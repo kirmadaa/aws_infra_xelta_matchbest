@@ -4,6 +4,7 @@ data "aws_route53_zone" "main" {
   private_zone = false
 }
 
+data "cloudflare_ip_ranges" "cloudflare" {}
 
 # Global secrets (stored in us-east-1, replicated to other regions)
 module "secrets_us_east_1" {
@@ -31,6 +32,7 @@ module "waf" {
 }
 
 module "cdn" {
+  count           = var.enable_cloudflare ? 0 : 1
   source          = "./modules/cdn"
   environment     = var.environment
   domain_name     = var.domain_name
@@ -43,7 +45,22 @@ module "cdn" {
     ap-south-1   = module.ecs_service_ap_south_1.frontend_alb_dns_name
   }
 
-  certificate_arn = module.route53_acm_us_east_1.certificate_arn
+  certificate_arn = module.route53_acm_us_east_1[0].certificate_arn
+}
+
+module "cloudflare_cdn" {
+  count       = var.enable_cloudflare ? 1 : 0
+  source      = "./modules/cloudflare_cdn"
+  environment = var.environment
+  domain_name = var.domain_name
+  zone_id     = var.cloudflare_zone_id
+  account_id  = var.cloudflare_account_id
+
+  origins = {
+    us-east-1    = module.ecs_service_us_east_1.frontend_alb_dns_name
+    eu-central-1 = module.ecs_service_eu_central_1.frontend_alb_dns_name
+    ap-south-1   = module.ecs_service_ap_south_1.frontend_alb_dns_name
+  }
 }
 
 # ==================================
@@ -356,9 +373,12 @@ module "ecs_service_us_east_1" {
   frontend_image         = var.frontend_images["us-east-1"]
   backend_image          = var.backend_images["us-east-1"]
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_us_east_1.id
+  enable_cloudflare      = var.enable_cloudflare
+  cloudflare_ip_ranges   = data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks
 }
 
 module "route53_acm_us_east_1" {
+  count     = var.enable_cloudflare ? 0 : 1
   source    = "./modules/route53_acm"
   providers = { aws = aws.us_east_1 }
 
@@ -367,8 +387,8 @@ module "route53_acm_us_east_1" {
   domain_name     = var.domain_name
   route53_zone_id = data.aws_route53_zone.main.zone_id
 
-  cdn_dns_name    = module.cdn.cdn_dns_name
-  cdn_zone_id     = module.cdn.cdn_zone_id
+  cdn_dns_name    = module.cdn[0].cdn_dns_name
+  cdn_zone_id     = module.cdn[0].cdn_zone_id
 }
 
 module "redis_us_east_1" {
@@ -675,6 +695,8 @@ module "ecs_service_eu_central_1" {
   frontend_image         = var.frontend_images["eu-central-1"]
   backend_image          = var.backend_images["eu-central-1"]
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_eu_central_1.id
+  enable_cloudflare      = var.enable_cloudflare
+  cloudflare_ip_ranges   = data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks
 }
 
 module "redis_eu_central_1" {
@@ -939,6 +961,8 @@ module "ecs_service_ap_south_1" {
   frontend_image         = var.frontend_images["ap-south-1"]
   backend_image          = var.backend_images["ap-south-1"]
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_ap_south_1.id
+  enable_cloudflare      = var.enable_cloudflare
+  cloudflare_ip_ranges   = data.cloudflare_ip_ranges.cloudflare.ipv4_cidr_blocks
 }
 
 module "redis_ap_south_1" {

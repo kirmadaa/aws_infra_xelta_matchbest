@@ -12,4 +12,3 @@ output "route53_record_fqdn" {
   description = "Route53 record FQDN"
   value       = aws_route53_record.app.fqdn
 }
-
