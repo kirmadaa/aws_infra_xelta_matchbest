@@ -345,11 +345,24 @@ resource "aws_security_group" "alb_sg" {
   description = "Allow HTTP traffic from VPC (for CDN)"
   vpc_id      = var.vpc_id
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = var.enable_cloudflare ? [1] : []
+    content {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = var.cloudflare_ip_ranges
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.enable_cloudflare ? [] : [1]
+    content {
+      from_port       = 80
+      to_port         = 80
+      protocol        = "tcp"
+      prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
+    }
   }
 
   egress {

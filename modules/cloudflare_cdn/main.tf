@@ -59,20 +59,13 @@ resource "cloudflare_worker_script" "geo_router" {
     }
   EOT
 
-  module = false
+  module = true
 }
 
-# Bind Worker to Route (Root)
+# Bind Worker to Route
 resource "cloudflare_worker_route" "main" {
   zone_id     = var.zone_id
   pattern     = "${var.domain_name}/*"
-  script_name = cloudflare_worker_script.geo_router.name
-}
-
-# Bind Worker to Route (WWW)
-resource "cloudflare_worker_route" "www" {
-  zone_id     = var.zone_id
-  pattern     = "www.${var.domain_name}/*"
   script_name = cloudflare_worker_script.geo_router.name
 }
 
