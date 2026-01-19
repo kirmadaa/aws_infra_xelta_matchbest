@@ -43,20 +43,28 @@ resource "aws_api_gateway_account" "main" {
 # API Gateway Integrations for Lambda functions
 resource "aws_apigatewayv2_integration" "connect" {
   api_id           = aws_apigatewayv2_api.main.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = var.connect_lambda_arn
+  integration_type = "MOCK"
 }
 
 resource "aws_apigatewayv2_integration" "default" {
-  api_id           = aws_apigatewayv2_api.main.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = var.default_lambda_arn
+  api_id            = aws_apigatewayv2_api.main.id
+  integration_type  = "AWS"
+  integration_uri   = "arn:aws:apigateway:${var.region}:sqs:action/SendMessage"
+  credentials_arn   = var.sqs_role_arn
+  passthrough_behavior = "NEVER"
+
+  request_parameters = {
+    "Integration.request.header.Content-Type" = "'application/x-www-form-urlencoded'"
+  }
+
+  request_templates = {
+    "application/json" = "Action=SendMessage&MessageBody=$input.body&QueueUrl=${var.sqs_queue_url}&MessageAttribute.1.Name=connectionId&MessageAttribute.1.Value.DataType=String&MessageAttribute.1.Value.StringValue=$context.connectionId"
+  }
 }
 
 resource "aws_apigatewayv2_integration" "disconnect" {
   api_id           = aws_apigatewayv2_api.main.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = var.disconnect_lambda_arn
+  integration_type = "MOCK"
 }
 
 # WebSocket Routes

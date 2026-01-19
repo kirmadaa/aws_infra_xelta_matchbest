@@ -74,6 +74,66 @@ variable "backend_images" {
   }
 }
 
+variable "agent_images" {
+  description = "Docker images for the agent service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
+variable "photogpt_images" {
+  description = "Docker images for the photogpt service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
+variable "photolab_images" {
+  description = "Docker images for the photolab service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
+variable "homedesign_images" {
+  description = "Docker images for the homedesign service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
+variable "comicflow_images" {
+  description = "Docker images for the comicflow service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
+variable "cmsb_images" {
+  description = "Docker images for the cmsb service, keyed by region"
+  type        = map(string)
+  default = {
+    "us-east-1"    = "nginx:latest"
+    "eu-central-1" = "nginx:latest"
+    "ap-south-1"   = "nginx:latest"
+  }
+}
+
 variable "api_gateway_cors_origins" {
   description = "List of allowed origins for the HTTP API Gateway (e.g., [\"https://xelta.ai\"]) - must include 'https://'"
   type        = list(string)

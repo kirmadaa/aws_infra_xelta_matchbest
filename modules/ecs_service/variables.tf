@@ -33,6 +33,36 @@ variable "backend_image" {
   type        = string
 }
 
+variable "agent_image" {
+  description = "Docker image for the agent service"
+  type        = string
+}
+
+variable "photogpt_image" {
+  description = "Docker image for the photogpt service"
+  type        = string
+}
+
+variable "photolab_image" {
+  description = "Docker image for the photolab service"
+  type        = string
+}
+
+variable "homedesign_image" {
+  description = "Docker image for the homedesign service"
+  type        = string
+}
+
+variable "comicflow_image" {
+  description = "Docker image for the comicflow service"
+  type        = string
+}
+
+variable "cmsb_image" {
+  description = "Docker image for the cmsb service"
+  type        = string
+}
+
 variable "http_api_vpclink_sg_id" {
   description = "The ID of the security group for the HTTP API Gateway VPC Link"
   type        = string

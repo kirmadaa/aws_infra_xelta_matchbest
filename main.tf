@@ -168,6 +168,42 @@ resource "aws_s3_bucket_lifecycle_configuration" "results_ap_south_1" {
 }
 
 
+# ================================================
+# GLOBAL IAM ROLE FOR API GATEWAY -> SQS
+# ================================================
+resource "aws_iam_role" "apigw_sqs" {
+  provider = aws.us_east_1
+  name     = "xelta-${var.environment}-apigw-sqs-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "apigateway.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_policy" "apigw_sqs" {
+  provider = aws.us_east_1
+  name     = "xelta-${var.environment}-apigw-sqs-policy"
+  policy   = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = "sqs:SendMessage"
+      Effect   = "Allow"
+      Resource = "arn:aws:sqs:*:*:xelta-*-jobs-*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "apigw_sqs" {
+  provider   = aws.us_east_1
+  role       = aws_iam_role.apigw_sqs.name
+  policy_arn = aws_iam_policy.apigw_sqs.arn
+}
+
+
 # ===========================
 # US-EAST-1 REGION RESOURCES
 # ===========================
@@ -246,54 +282,7 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_us_east_1" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# --- ConnectHandler Lambda ---
-resource "aws_lambda_function" "connect_handler_us_east_1" {
-  provider         = aws.us_east_1
-  function_name    = "xelta-${var.environment}-connect-handler-us-east-1"
-  role             = aws_iam_role.lambda_exec_us_east_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/connect.zip"
-  source_code_hash = filebase64sha256("lambda/connect.zip")
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- StartJobHandler Lambda ---
-resource "aws_lambda_function" "start_job_handler_us_east_1" {
-  provider         = aws.us_east_1
-  function_name    = "xelta-${var.environment}-start-job-handler-us-east-1"
-  role             = aws_iam_role.lambda_exec_us_east_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/start_job.zip"
-  source_code_hash = filebase64sha256("lambda/start_job.zip")
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_us_east_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_us_east_1.id
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-resource "aws_lambda_event_source_mapping" "worker_trigger_ap_south_1" {
-  provider         = aws.ap_south_1
-  event_source_arn = aws_sqs_queue.jobs_ap_south_1.arn
-  function_name    = aws_lambda_function.worker_ap_south_1.arn
-}
-
-resource "aws_lambda_event_source_mapping" "worker_trigger_eu_central_1" {
-  provider         = aws.eu_central_1
-  event_source_arn = aws_sqs_queue.jobs_eu_central_1.arn
-  function_name    = aws_lambda_function.worker_eu_central_1.arn
-}
+# --- REMOVED ConnectHandler and StartJobHandler ---
 
 resource "aws_lambda_event_source_mapping" "worker_trigger_us_east_1" {
   provider         = aws.us_east_1
@@ -352,9 +341,18 @@ module "ecs_service_us_east_1" {
   vpc_id                 = module.vpc_us_east_1.vpc_id
   vpc_cidr               = var.vpc_cidr_blocks["us-east-1"]
   private_subnet_ids     = module.vpc_us_east_1.private_subnet_ids
-  public_subnet_ids      = module.vpc_us_east_1.public_subnet_ids
+  public_subnet_ids      = module.vpc_us_east_1.public_subnet_ids # Added
   frontend_image         = var.frontend_images["us-east-1"]
   backend_image          = var.backend_images["us-east-1"]
+  
+  # New Service Images
+  agent_image      = var.agent_images["us-east-1"]
+  photogpt_image   = var.photogpt_images["us-east-1"]
+  photolab_image   = var.photolab_images["us-east-1"]
+  homedesign_image = var.homedesign_images["us-east-1"]
+  comicflow_image  = var.comicflow_images["us-east-1"]
+  cmsb_image       = var.cmsb_images["us-east-1"]
+
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_us_east_1.id
 }
 
@@ -393,30 +391,12 @@ module "websocket_api_gateway_us_east_1" {
   environment           = var.environment
   region                = "us-east-1"
   vpc_id                = module.vpc_us_east_1.vpc_id
-  connect_lambda_arn    = aws_lambda_function.connect_handler_us_east_1.arn
-  default_lambda_arn    = aws_lambda_function.start_job_handler_us_east_1.arn
-  disconnect_lambda_arn = aws_lambda_function.connect_handler_us_east_1.arn
+  # --- UPDATED: Direct SQS Integration ---
+  sqs_queue_url         = aws_sqs_queue.jobs_us_east_1.id
+  sqs_role_arn          = aws_iam_role.apigw_sqs.arn
 }
 
-# --- ADDED: API Gateway Lambda Permissions for us-east-1 ---
-resource "aws_lambda_permission" "connect_handler_us_east_1" {
-  provider      = aws.us_east_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect_handler_us_east_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*/$connect"
-}
-
-resource "aws_lambda_permission" "start_job_handler_us_east_1" {
-  provider      = aws.us_east_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.start_job_handler_us_east_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_us_east_1[0].api_execution_arn}/*/$default"
-}
-# --- END OF ADDED PERMISSIONS ---
+# --- REMOVED API Gateway Lambda Permissions ---
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_us_east_1" {
@@ -583,41 +563,12 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_eu_central_1" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# --- ConnectHandler Lambda ---
-resource "aws_lambda_function" "connect_handler_eu_central_1" {
+# --- REMOVED ConnectHandler and StartJobHandler ---
+
+resource "aws_lambda_event_source_mapping" "worker_trigger_eu_central_1" {
   provider         = aws.eu_central_1
-  function_name    = "xelta-${var.environment}-connect-handler-eu-central-1"
-  role             = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/connect.zip"
-  source_code_hash = filebase64sha256("lambda/connect.zip")
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- StartJobHandler Lambda ---
-resource "aws_lambda_function" "start_job_handler_eu_central_1" {
-  provider         = aws.eu_central_1
-  function_name    = "xelta-${var.environment}-start-job-handler-eu-central-1"
-  role             = aws_iam_role.lambda_exec_eu_central_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/start_job.zip"
-  source_code_hash = filebase64sha256("lambda/start_job.zip")
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_eu_central_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_eu_central_1.id
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
+  event_source_arn = aws_sqs_queue.jobs_eu_central_1.arn
+  function_name    = aws_lambda_function.worker_eu_central_1.arn
 }
 
 # --- Worker Lambda ---
@@ -671,9 +622,18 @@ module "ecs_service_eu_central_1" {
   vpc_id                 = module.vpc_eu_central_1.vpc_id
   vpc_cidr               = var.vpc_cidr_blocks["eu-central-1"]
   private_subnet_ids     = module.vpc_eu_central_1.private_subnet_ids
-  public_subnet_ids      = module.vpc_eu_central_1.public_subnet_ids
+  public_subnet_ids      = module.vpc_eu_central_1.public_subnet_ids # Added
   frontend_image         = var.frontend_images["eu-central-1"]
   backend_image          = var.backend_images["eu-central-1"]
+  
+  # New Service Images
+  agent_image      = var.agent_images["eu-central-1"]
+  photogpt_image   = var.photogpt_images["eu-central-1"]
+  photolab_image   = var.photolab_images["eu-central-1"]
+  homedesign_image = var.homedesign_images["eu-central-1"]
+  comicflow_image  = var.comicflow_images["eu-central-1"]
+  cmsb_image       = var.cmsb_images["eu-central-1"]
+
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_eu_central_1.id
 }
 
@@ -699,30 +659,12 @@ module "websocket_api_gateway_eu_central_1" {
   environment           = var.environment
   region                = "eu-central-1"
   vpc_id                = module.vpc_eu_central_1.vpc_id
-  connect_lambda_arn    = aws_lambda_function.connect_handler_eu_central_1.arn
-  default_lambda_arn    = aws_lambda_function.start_job_handler_eu_central_1.arn
-  disconnect_lambda_arn = aws_lambda_function.connect_handler_eu_central_1.arn
+  # --- UPDATED: Direct SQS Integration ---
+  sqs_queue_url         = aws_sqs_queue.jobs_eu_central_1.id
+  sqs_role_arn          = aws_iam_role.apigw_sqs.arn
 }
 
-# --- ADDED: API Gateway Lambda Permissions for eu-central-1 ---
-resource "aws_lambda_permission" "connect_handler_eu_central_1" {
-  provider      = aws.eu_central_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect_handler_eu_central_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*/$connect"
-}
-
-resource "aws_lambda_permission" "start_job_handler_eu_central_1" {
-  provider      = aws.eu_central_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.start_job_handler_eu_central_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_eu_central_1[0].api_execution_arn}/*/$default"
-}
-# --- END OF ADDED PERMISSIONS ---
+# --- REMOVED API Gateway Lambda Permissions ---
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_eu_central_1" {
@@ -847,41 +789,12 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access_ap_south_1" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# --- ConnectHandler Lambda ---
-resource "aws_lambda_function" "connect_handler_ap_south_1" {
+# --- REMOVED ConnectHandler and StartJobHandler ---
+
+resource "aws_lambda_event_source_mapping" "worker_trigger_ap_south_1" {
   provider         = aws.ap_south_1
-  function_name    = "xelta-${var.environment}-connect-handler-ap_south_1"
-  role             = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/connect.zip"
-  source_code_hash = filebase64sha256("lambda/connect.zip")
-
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-# --- StartJobHandler Lambda ---
-resource "aws_lambda_function" "start_job_handler_ap_south_1" {
-  provider         = aws.ap_south_1
-  function_name    = "xelta-${var.environment}-start-job-handler-ap_south_1"
-  role             = aws_iam_role.lambda_exec_ap_south_1.arn
-  handler          = "index.handler"
-  runtime          = "nodejs20.x"
-  filename         = "lambda/start_job.zip"
-  source_code_hash = filebase64sha256("lambda/start_job.zip")
-
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.jobs_ap_south_1.name
-      SQS_QUEUE_URL  = aws_sqs_queue.jobs_ap_south_1.id
-    }
-  }
-
-  lifecycle {
-    ignore_changes = all
-  }
+  event_source_arn = aws_sqs_queue.jobs_ap_south_1.arn
+  function_name    = aws_lambda_function.worker_ap_south_1.arn
 }
 
 # --- Worker Lambda ---
@@ -935,9 +848,18 @@ module "ecs_service_ap_south_1" {
   vpc_id                 = module.vpc_ap_south_1.vpc_id
   vpc_cidr               = var.vpc_cidr_blocks["ap-south-1"]
   private_subnet_ids     = module.vpc_ap_south_1.private_subnet_ids
-  public_subnet_ids      = module.vpc_ap_south_1.public_subnet_ids
+  public_subnet_ids      = module.vpc_ap_south_1.public_subnet_ids # Added
   frontend_image         = var.frontend_images["ap-south-1"]
   backend_image          = var.backend_images["ap-south-1"]
+  
+  # New Service Images
+  agent_image      = var.agent_images["ap-south-1"]
+  photogpt_image   = var.photogpt_images["ap-south-1"]
+  photolab_image   = var.photolab_images["ap-south-1"]
+  homedesign_image = var.homedesign_images["ap-south-1"]
+  comicflow_image  = var.comicflow_images["ap-south-1"]
+  cmsb_image       = var.cmsb_images["ap-south-1"]
+
   http_api_vpclink_sg_id = aws_security_group.http_api_vpclink_sg_ap_south_1.id
 }
 
@@ -963,30 +885,12 @@ module "websocket_api_gateway_ap_south_1" {
   environment           = var.environment
   region                = "ap-south-1"
   vpc_id                = module.vpc_ap_south_1.vpc_id
-  connect_lambda_arn    = aws_lambda_function.connect_handler_ap_south_1.arn
-  default_lambda_arn    = aws_lambda_function.start_job_handler_ap_south_1.arn
-  disconnect_lambda_arn = aws_lambda_function.connect_handler_ap_south_1.arn
+  # --- UPDATED: Direct SQS Integration ---
+  sqs_queue_url         = aws_sqs_queue.jobs_ap_south_1.id
+  sqs_role_arn          = aws_iam_role.apigw_sqs.arn
 }
 
-# --- ADDED: API Gateway Lambda Permissions for ap-south-1 ---
-resource "aws_lambda_permission" "connect_handler_ap_south_1" {
-  provider      = aws.ap_south_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect_handler_ap_south_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*/$connect"
-}
-
-resource "aws_lambda_permission" "start_job_handler_ap_south_1" {
-  provider      = aws.ap_south_1
-  count         = var.enable_websocket_api ? 1 : 0
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.start_job_handler_ap_south_1.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${module.websocket_api_gateway_ap_south_1[0].api_execution_arn}/*/$default"
-}
-# --- END OF ADDED PERMISSIONS ---
+# --- REMOVED API Gateway Lambda Permissions ---
 
 # --- NEW HTTP API Gateway ---
 resource "aws_apigatewayv2_api" "http_api_ap_south_1" {

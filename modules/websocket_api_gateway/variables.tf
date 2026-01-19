@@ -15,18 +15,13 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "connect_lambda_arn" {
-  description = "The ARN of the Connect Lambda function"
+variable "sqs_queue_url" {
+  description = "The URL of the SQS queue to send messages to"
   type        = string
 }
 
-variable "default_lambda_arn" {
-  description = "The ARN of the Default Lambda function"
-  type        = string
-}
-
-variable "disconnect_lambda_arn" {
-  description = "The ARN of the Disconnect Lambda function"
+variable "sqs_role_arn" {
+  description = "The ARN of the IAM role for API Gateway to send messages to SQS"
   type        = string
 }
 
